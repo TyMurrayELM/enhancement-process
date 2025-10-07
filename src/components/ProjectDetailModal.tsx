@@ -6,7 +6,7 @@ import { Project, ProjectStatus, MaterialsStatus, getAspireLink } from '@/lib/ty
 import { statusConfig } from '@/lib/statusConfig';
 import { materialsConfig } from '@/lib/materialsConfig';
 import { getStageRequirements } from '@/utils/requirements';
-import { ChevronRight, ChevronLeft, Lock, CheckCircle, History, ExternalLink, Save } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Lock, CheckCircle, History, ExternalLink, Save, Calendar } from 'lucide-react';
 
 interface ProjectDetailModalProps {
   project: Project;
@@ -50,6 +50,46 @@ function getFollowUpDate(completedDate: string | undefined, daysToAdd: number): 
     day: 'numeric',
     year: 'numeric'
   });
+}
+
+// Helper to format date for Google Calendar (YYYYMMDDTHHMMSS)
+function formatGoogleCalendarDate(date: Date): string {
+  const pad = (num: number) => num.toString().padStart(2, '0');
+  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}T${pad(date.getHours())}${pad(date.getMinutes())}00`;
+}
+
+// Helper to create Google Calendar URL
+function createGoogleCalendarUrl(project: Project, meetingDate: string): string {
+  const date = new Date(meetingDate);
+  // Set to 9 AM local time
+  date.setHours(9, 0, 0, 0);
+  
+  // End time is 1 hour later
+  const endDate = new Date(date);
+  endDate.setHours(10, 0, 0, 0);
+  
+  const startDateStr = formatGoogleCalendarDate(date);
+  const endDateStr = formatGoogleCalendarDate(endDate);
+  
+  const title = encodeURIComponent(`Initial Site Meeting - ${project.clientName}`);
+  const location = encodeURIComponent(project.clientName);
+  const details = encodeURIComponent(
+    `Initial on-site meeting for enhancement project\n\n` +
+    `WO#: ${project.aspireWoNumber || `#${project.id}`}\n` +
+    `Property: ${project.clientName}\n` +
+    `Opportunity: ${project.oppName || 'N/A'}\n` +
+    `Value: $${project.value.toLocaleString()}\n` +
+    `Client Specialist: ${project.accountManager}\n` +
+    `Enhancement Specialist: ${project.specialist}\n\n` +
+    `Agenda:\n` +
+    `- Walk property and confirm scope\n` +
+    `- Locate valves and timer stations${project.requiresIrrigation ? '' : ' (if applicable)'}\n` +
+    `- Discuss client expectations and timeline\n` +
+    `- Take before photos\n` +
+    `- Confirm any special requirements`
+  );
+  
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDateStr}/${endDateStr}&details=${details}&location=${location}`;
 }
 
 export default function ProjectDetailModal({ project, onClose, onUpdateProject }: ProjectDetailModalProps) {
@@ -160,6 +200,17 @@ export default function ProjectDetailModal({ project, onClose, onUpdateProject }
         completedBy: checked ? (session?.user?.email || 'Unknown User') : undefined
       }
     });
+  };
+
+  // Handler to open Google Calendar
+  const handleOpenCalendar = () => {
+    if (!initialMeetingDate) {
+      alert('Please select a meeting date first');
+      return;
+    }
+    
+    const calendarUrl = createGoogleCalendarUrl(project, initialMeetingDate);
+    window.open(calendarUrl, '_blank');
   };
 
   // Save current progress without advancing
@@ -657,12 +708,27 @@ export default function ProjectDetailModal({ project, onClose, onUpdateProject }
                             </div>
                             <div className="ml-8 bg-gray-50 p-3 rounded-lg">
                               <label className="block text-sm font-medium text-gray-700 mb-2">Meeting Date:</label>
-                              <input
-                                type="date"
-                                value={initialMeetingDate}
-                                onChange={(e) => setInitialMeetingDate(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
-                              />
+                              <div className="flex gap-2">
+                                <input
+                                  type="date"
+                                  value={initialMeetingDate}
+                                  onChange={(e) => setInitialMeetingDate(e.target.value)}
+                                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
+                                />
+                                <button
+                                  onClick={handleOpenCalendar}
+                                  disabled={!initialMeetingDate}
+                                  className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                                    initialMeetingDate
+                                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                  }`}
+                                  title={initialMeetingDate ? 'Create Google Calendar invite' : 'Select a date first'}
+                                >
+                                  <Calendar size={16} />
+                                  Create Invite
+                                </button>
+                              </div>
                               {initialMeetingDate && (
                                 <p className="text-xs text-gray-500 mt-1">
                                   Selected: {new Date(initialMeetingDate).toLocaleDateString('en-US', { 

@@ -1,28 +1,43 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { syncAspireOpportunities } from '@/lib/aspireSync';
+import NextAuth from "next-auth";
+import GoogleProvider from "next-auth/providers/google";
+import type { NextAuthOptions } from "next-auth";
 
-export async function POST() {
-  try {
-    // Optional: Add authentication check here
-    // const session = await getSession();
-    // if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_KEY! // Use service key for server-side
-    );
-    
-    // TEST MODE: Only sync 3 records
-    // Remove the number to sync all records
-   const result = await syncAspireOpportunities(supabase);
-    
-    return NextResponse.json(result);
-  } catch (error) {
-    console.error('Sync API error:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Sync failed' },
-      { status: 500 }
-    );
-  }
-}
+const authOptions: NextAuthOptions = {
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          scope: 'openid email profile https://www.googleapis.com/auth/calendar.events',
+          prompt: "consent",
+          access_type: "offline",
+          response_type: "code"
+        }
+      }
+    }),
+  ],
+  callbacks: {
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.email = token.email;
+        session.user.name = token.name;
+        session.user.image = token.picture as string;
+      }
+      return session;
+    },
+    async jwt({ token, account }) {
+      if (account) {
+        token.accessToken = account.access_token;
+      }
+      return token;
+    }
+  },
+  pages: {
+    signIn: '/auth/signin',
+  },
+};
+
+const handler = NextAuth(authOptions);
+
+export { handler as GET, handler as POST };
