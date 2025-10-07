@@ -6,7 +6,8 @@ import { Project, ProjectStatus, MaterialsStatus, getAspireLink } from '@/lib/ty
 import { statusConfig } from '@/lib/statusConfig';
 import { materialsConfig } from '@/lib/materialsConfig';
 import { getStageRequirements } from '@/utils/requirements';
-import { ChevronRight, ChevronLeft, Lock, CheckCircle, History, ExternalLink, Save, Calendar } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Lock, CheckCircle, History, ExternalLink, Save } from 'lucide-react';
+import Image from 'next/image';
 
 interface ProjectDetailModalProps {
   project: Project;
@@ -52,13 +53,27 @@ function getFollowUpDate(completedDate: string | undefined, daysToAdd: number): 
   });
 }
 
+// Helper to convert name to email format (first.last@encorelm.com)
+function nameToEmail(fullName: string): string {
+  if (!fullName) return '';
+  
+  const nameParts = fullName.trim().toLowerCase().split(' ');
+  if (nameParts.length < 2) return '';
+  
+  // Handle first and last name (ignore middle names/initials)
+  const firstName = nameParts[0];
+  const lastName = nameParts[nameParts.length - 1];
+  
+  return `${firstName}.${lastName}@encorelm.com`;
+}
+
 // Helper to format date for Google Calendar (YYYYMMDDTHHMMSS)
 function formatGoogleCalendarDate(date: Date): string {
   const pad = (num: number) => num.toString().padStart(2, '0');
   return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}T${pad(date.getHours())}${pad(date.getMinutes())}00`;
 }
 
-// Helper to create Google Calendar URL
+// Helper to create Google Calendar URL for initial meeting
 function createGoogleCalendarUrl(project: Project, meetingDate: string): string {
   const date = new Date(meetingDate);
   // Set to 9 AM local time
@@ -77,6 +92,12 @@ function createGoogleCalendarUrl(project: Project, meetingDate: string): string 
   }
   const title = encodeURIComponent(titleParts.join(' - '));
   const location = encodeURIComponent(project.clientName);
+  
+  // Generate Aspire link
+  const aspireLink = project.opportunityId 
+    ? `https://cloud.youraspire.com/app/opportunities/details/${project.opportunityId}`
+    : 'N/A';
+  
   const details = encodeURIComponent(
     `Initial on-site meeting for enhancement project\n\n` +
     `WO#: ${project.aspireWoNumber || `#${project.id}`}\n` +
@@ -84,7 +105,8 @@ function createGoogleCalendarUrl(project: Project, meetingDate: string): string 
     `Opportunity: ${project.oppName || 'N/A'}\n` +
     `Value: $${project.value.toLocaleString()}\n` +
     `Client Specialist: ${project.accountManager}\n` +
-    `Enhancement Specialist: ${project.specialist}\n\n` +
+    `Enhancement Specialist: ${project.specialist}\n` +
+    `Aspire Link: ${aspireLink}\n\n` +
     `Agenda:\n` +
     `- Walk property and confirm scope\n` +
     `- Locate valves and timer stations${project.requiresIrrigation ? '' : ' (if applicable)'}\n` +
@@ -93,7 +115,117 @@ function createGoogleCalendarUrl(project: Project, meetingDate: string): string 
     `- Confirm any special requirements`
   );
   
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDateStr}/${endDateStr}&details=${details}&location=${location}`;
+  // Determine default attendees based on region
+  const region = project.regionName?.toLowerCase() || '';
+  const defaultAttendees: string[] = [];
+  
+  if (region.includes('las vegas') || region.includes('vegas')) {
+    defaultAttendees.push('adrian.garcia@encorelm.com');
+  } else {
+    // Phoenix and all other regions
+    defaultAttendees.push('dennis.bronson@encorelm.com');
+  }
+  
+  const attendees = encodeURIComponent(defaultAttendees.join(','));
+  
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDateStr}/${endDateStr}&details=${details}&location=${location}&add=${attendees}`;
+}
+
+// Helper to create Google Calendar URL for warranty visits
+function createWarrantyCalendarUrl(project: Project, visitType: string, daysAfterCompletion: number): string {
+  if (!project.completedDate) return '';
+  
+  const completedDate = new Date(project.completedDate);
+  const visitDate = new Date(completedDate);
+  visitDate.setDate(visitDate.getDate() + daysAfterCompletion);
+  
+  // Set to 9 AM local time
+  visitDate.setHours(9, 0, 0, 0);
+  
+  // End time is 1 hour later
+  const endDate = new Date(visitDate);
+  endDate.setHours(10, 0, 0, 0);
+  
+  const startDateStr = formatGoogleCalendarDate(visitDate);
+  const endDateStr = formatGoogleCalendarDate(endDate);
+  
+  const visitLabels: { [key: string]: string } = {
+    weekOne: '1-Week Follow-up',
+    month1: '30-Day Follow-up',
+    month2: '60-Day Follow-up',
+    month3: '90-Day Follow-up'
+  };
+  
+  const titleParts = [visitLabels[visitType], project.clientName];
+  if (project.oppName) {
+    titleParts.push(project.oppName);
+  }
+  const title = encodeURIComponent(titleParts.join(' - '));
+  const location = encodeURIComponent(project.clientName);
+  
+  // Generate Aspire link
+  const aspireLink = project.opportunityId 
+    ? `https://cloud.youraspire.com/app/opportunities/details/${project.opportunityId}`
+    : 'N/A';
+  
+  const details = encodeURIComponent(
+    `${visitLabels[visitType]} inspection for enhancement project\n\n` +
+    `WO#: ${project.aspireWoNumber || `#${project.id}`}\n` +
+    `Property: ${project.clientName}\n` +
+    `Opportunity: ${project.oppName || 'N/A'}\n` +
+    `Value: $${project.value.toLocaleString()}\n` +
+    `Client Specialist: ${project.accountManager}\n` +
+    `Enhancement Specialist: ${project.specialist}\n` +
+    `Field Supervisor: ${project.fieldSupervisor || 'TBD'}\n` +
+    `Aspire Link: ${aspireLink}\n\n` +
+    `Inspection Tasks:\n` +
+    `- Check health and condition of trees & shrubs\n` +
+    `- Verify irrigation system functionality\n` +
+    `- Inspect staking and support systems\n` +
+    `- Document any issues with photos\n` +
+    `- Report findings to Enhancement Manager\n` +
+    `- Notify client of any concerns`
+  );
+  
+  // Determine default attendees based on region
+  const region = project.regionName?.toLowerCase() || '';
+  const defaultAttendees: string[] = [];
+  
+  if (region.includes('las vegas') || region.includes('vegas')) {
+    defaultAttendees.push('adrian.garcia@encorelm.com');
+  } else {
+    // Phoenix and all other regions
+    defaultAttendees.push('dennis.bronson@encorelm.com');
+  }
+  
+  // Add field supervisor if assigned
+  if (project.fieldSupervisor) {
+    // Map field supervisor names to email addresses
+    const supervisorEmails: { [key: string]: string } = {
+      'Jose Zacarias': 'jose.zacarias@encorelm.com',
+      'Martin Perez': 'martin.perez@encorelm.com',
+      'Ron Pickard': 'ron.pickard@encorelm.com',
+      'Adrian Garcia': 'adrian.garcia@encorelm.com'
+    };
+    const supervisorEmail = supervisorEmails[project.fieldSupervisor];
+    if (supervisorEmail && !defaultAttendees.includes(supervisorEmail)) {
+      defaultAttendees.push(supervisorEmail);
+    }
+  }
+  
+  // Add Enhancement Specialist for 30, 60, and 90 day follow-ups
+  if (visitType === 'month1' || visitType === 'month2' || visitType === 'month3') {
+    if (project.specialist) {
+      const specialistEmail = nameToEmail(project.specialist);
+      if (specialistEmail && !defaultAttendees.includes(specialistEmail)) {
+        defaultAttendees.push(specialistEmail);
+      }
+    }
+  }
+  
+  const attendees = encodeURIComponent(defaultAttendees.join(','));
+  
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDateStr}/${endDateStr}&details=${details}&location=${location}&add=${attendees}`;
 }
 
 export default function ProjectDetailModal({ project, onClose, onUpdateProject }: ProjectDetailModalProps) {
@@ -139,7 +271,7 @@ export default function ProjectDetailModal({ project, onClose, onUpdateProject }
     if (region.includes('las vegas') || region.includes('vegas')) {
       return ['Adrian Garcia'];
     } else {
-      return ['Jose Zacarais', 'Martin Perez', 'Ron Pickard'];
+      return ['Jose Zacarias', 'Martin Perez', 'Ron Pickard'];
     }
   })();
 
@@ -729,10 +861,13 @@ export default function ProjectDetailModal({ project, onClose, onUpdateProject }
                                   }`}
                                   title={initialMeetingDate ? 'Create Google Calendar invite' : 'Select a date first'}
                                 >
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                                    <rect width="24" height="24" rx="4" fill="white"/>
-                                    <path d="M19 4h-1V3c0-.55-.45-1-1-1s-1 .45-1 1v1H8V3c0-.55-.45-1-1-1s-1 .45-1 1v1H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM5 8V6h14v2H5zm2 4h5v5H7v-5z" fill="#1a73e8"/>
-                                  </svg>
+                                  <Image
+                                    src="/icons/googlecalendaricon.png"
+                                    alt="Google Calendar"
+                                    width={20}
+                                    height={20}
+                                    className="flex-shrink-0"
+                                  />
                                   Create Invite
                                 </button>
                               </div>
@@ -979,41 +1114,77 @@ export default function ProjectDetailModal({ project, onClose, onUpdateProject }
                             </div>
                           </div>
                         ) : (
-                          <label className="flex items-start gap-3 cursor-pointer hover:bg-gray-50 p-3 rounded-lg border border-gray-200">
-                            <input
-                              type="checkbox"
-                              checked={checklist[item.id]?.completed || false}
-                              onChange={(e) => handleCheckboxChange(item.id, e.target.checked)}
-                              className="mt-1 h-5 w-5 text-green-600 rounded focus:ring-green-500"
-                            />
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <div className="flex flex-col">
-                                  <div>
-                                    <span className="text-gray-900 font-medium">{item.label}</span>
-                                    <span className="ml-2 text-xs text-red-600 font-medium">REQUIRED</span>
-                                  </div>
-                                  {dueDate && (
-                                    <span className="text-xs text-blue-600 font-medium mt-1">
-                                      Due: {dueDate}
-                                    </span>
-                                  )}
-                                </div>
-                                {checklist[item.id]?.completedDate && (
-                                  <div className="text-right">
-                                    <span className="text-xs text-green-600 font-medium block">
-                                      ✓ {formatDate(checklist[item.id].completedDate)}
-                                    </span>
-                                    {checklist[item.id]?.completedBy && (
-                                      <span className="text-xs text-gray-500 block">
-                                        {checklist[item.id].completedBy}
+                          <div className="border border-gray-200 rounded-lg p-4 bg-white">
+                            <label className="flex items-start gap-3 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={checklist[item.id]?.completed || false}
+                                onChange={(e) => handleCheckboxChange(item.id, e.target.checked)}
+                                className="mt-1 h-5 w-5 text-green-600 rounded focus:ring-green-500"
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="flex flex-col flex-1">
+                                    <div>
+                                      <span className="text-gray-900 font-medium">{item.label}</span>
+                                      <span className="ml-2 text-xs text-red-600 font-medium">REQUIRED</span>
+                                    </div>
+                                    {dueDate && (
+                                      <span className="text-xs text-blue-600 font-medium mt-1">
+                                        Due: {dueDate}
                                       </span>
                                     )}
                                   </div>
-                                )}
+                                  
+                                  <div className="flex items-center gap-2">
+                                    {/* Add calendar button for warranty visits */}
+                                    {project.status === 'follow_up' && project.completedDate && 
+                                      (item.id === 'weekOneInspection' || item.id === 'month1Visit' || item.id === 'month2Visit' || item.id === 'month3Visit') && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          const visitTypes: { [key: string]: { type: string; days: number } } = {
+                                            weekOneInspection: { type: 'weekOne', days: 7 },
+                                            month1Visit: { type: 'month1', days: 30 },
+                                            month2Visit: { type: 'month2', days: 60 },
+                                            month3Visit: { type: 'month3', days: 90 }
+                                          };
+                                          const visitInfo = visitTypes[item.id];
+                                          const calendarUrl = createWarrantyCalendarUrl(project, visitInfo.type, visitInfo.days);
+                                          window.open(calendarUrl, '_blank');
+                                        }}
+                                        className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5 text-xs font-medium whitespace-nowrap"
+                                        title="Create calendar invite for this visit"
+                                      >
+                                        <Image
+                                          src="/icons/googlecalendaricon.png"
+                                          alt="Google Calendar"
+                                          width={14}
+                                          height={14}
+                                          className="flex-shrink-0"
+                                        />
+                                        Schedule
+                                      </button>
+                                    )}
+                                    
+                                    {checklist[item.id]?.completedDate && (
+                                      <div className="text-right">
+                                        <span className="text-xs text-green-600 font-medium block whitespace-nowrap">
+                                          ✓ {formatDate(checklist[item.id].completedDate)}
+                                        </span>
+                                        {checklist[item.id]?.completedBy && (
+                                          <span className="text-xs text-gray-500 block">
+                                            {checklist[item.id].completedBy}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          </label>
+                            </label>
+                          </div>
                         )}
                       </div>
                     );
