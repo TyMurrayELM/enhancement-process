@@ -302,7 +302,7 @@ export default function NotesModal({ project, onClose, onSave }: NotesModalProps
                       </>
                     ) : (
                       <p className="text-sm text-gray-500 italic bg-gray-100 p-3 rounded-lg border border-gray-300">
-                        No notes for this stage yet. Click "Edit" to add notes.
+                        No notes for this stage yet. Click &quot;Edit&quot; to add notes.
                       </p>
                     )}
                   </div>
@@ -374,7 +374,7 @@ export default function NotesModal({ project, onClose, onSave }: NotesModalProps
                   </>
                 ) : (
                   <p className="text-sm text-gray-500 italic bg-gray-100 p-4 rounded-lg border border-gray-300">
-                    No general notes yet. Click "Edit" to add notes.
+                    No general notes yet. Click &quot;Edit&quot; to add notes.
                   </p>
                 )}
               </div>

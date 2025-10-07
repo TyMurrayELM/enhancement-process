@@ -5,13 +5,75 @@ import { supabase } from '@/lib/supabase';
 import { Project, ProjectStatus } from '@/lib/types';
 import { getStageRequirements } from '@/utils/requirements';
 
+interface DatabaseProject {
+  id: number;
+  aspire_wo_number?: string;
+  opportunity_id?: number;
+  property?: string;
+  opp_name?: string;
+  stage: string;
+  materials_status?: string;
+  value?: number;
+  client_specialist?: string;
+  enh_specialist?: string;
+  branch_name?: string;
+  region_name?: string;
+  actual_labor_hours?: number;
+  estimated_labor_hours?: number;
+  actual_gross_margin_percent?: number;
+  estimated_gross_margin_percent?: number;
+  estimated_material_cost?: number;
+  actual_cost_material?: number;
+  estimator_notes?: string;
+  created_date: string;
+  scheduled_date?: string;
+  completed_date?: string;
+  won_date?: string;
+  initial_meeting_scheduled_date?: string;
+  notes?: string;
+  notes_by?: string;
+  notes_date?: string;
+  current_stage_notes?: string;
+  current_stage_notes_by?: string;
+  current_stage_notes_date?: string;
+  requires_irrigation?: boolean;
+  requires_spray?: boolean;
+  before_photos?: number;
+  progress_photos?: number;
+  completed_photos?: number;
+  before_photo_link?: string;
+  before_photo_date?: string;
+  progress_photo_links?: Array<{ link: string; addedDate: string }>;
+  completion_photo_link?: string;
+  completion_photo_date?: string;
+  materials_vendors?: string;
+  field_supervisor?: string;
+  checklist_data?: Record<string, { 
+    completed: boolean; 
+    completedDate: string | null;
+    completedBy?: string;
+  }>;
+  stage_history?: Array<{
+    stage: ProjectStatus;
+    completedDate: string;
+    notes?: string;
+    notesBy?: string;
+    notesDate?: string;
+    checklistData: Record<string, { 
+      completed: boolean; 
+      completedDate: string | null;
+      completedBy?: string;
+    }>;
+  }>;
+}
+
 // Helper function to calculate checklist progress
-function calculateChecklistProgress(project: any): { completed: number; total: number } {
+function calculateChecklistProgress(project: DatabaseProject): { completed: number; total: number } {
   const requirements = getStageRequirements(project.stage, {
     ...project,
     requiresIrrigation: project.requires_irrigation,
     requiresSpray: project.requires_spray,
-  });
+  } as Project);
   
   const total = requirements.length;
   let completed = 0;
@@ -22,7 +84,7 @@ function calculateChecklistProgress(project: any): { completed: number; total: n
     // Special handling for photo items
     if (item.id === 'beforePhotos' && project.before_photo_link) {
       completed++;
-    } else if (item.id === 'progressPhotos' && project.progress_photo_links?.length > 0) {
+    } else if (item.id === 'progressPhotos' && project.progress_photo_links?.length) {
       completed++;
     } else if (item.id === 'completionPhotos' && project.completion_photo_link) {
       completed++;
@@ -35,7 +97,7 @@ function calculateChecklistProgress(project: any): { completed: number; total: n
 }
 
 // Helper function to map database row to Project interface
-function mapDatabaseToProject(row: any): Project {
+function mapDatabaseToProject(row: DatabaseProject): Project {
   const checklistProgress = calculateChecklistProgress(row);
   
   return {
@@ -59,7 +121,7 @@ function mapDatabaseToProject(row: any): Project {
     actualCostMaterial: row.actual_cost_material,
     estimatorNotes: row.estimator_notes,
     createdDate: row.created_date,
-    scheduledDate: row.scheduled_date,
+    scheduledDate: row.scheduled_date || null,
     completedDate: row.completed_date,
     wonDate: row.won_date,
     initialMeetingScheduledDate: row.initial_meeting_scheduled_date,

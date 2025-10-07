@@ -243,7 +243,7 @@ export default function ProjectDetailModal({ project, onClose, onUpdateProject }
     if (!previousStatus) return;
     
     const confirmed = window.confirm(
-      `Move this project back to "${statusConfig[previousStatus].label}"?\n\nThis will reset the current stage's checklist but preserve historical data.`
+      `Move this project back to "${statusConfig[previousStatus].label}"?\n\nThis will reset the current stage\'s checklist but preserve historical data.`
     );
     
     if (!confirmed) return;
@@ -398,15 +398,15 @@ export default function ProjectDetailModal({ project, onClose, onUpdateProject }
                             </div>
                           </div>
                           <div className="ml-6 space-y-1">
-                            {project.progressPhotoLinks.map((photoSet, index) => (
-                              <div key={index}>
+                            {project.progressPhotoLinks.map((photoSet, idx) => (
+                              <div key={idx}>
                                 <a 
                                   href={photoSet.link}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-sm text-blue-600 hover:text-blue-700 block"
                                 >
-                                  Progress Set {index + 1} →
+                                  Progress Set {idx + 1} →
                                 </a>
                                 <span className="text-xs text-gray-500">
                                   Added: {formatDate(photoSet.addedDate)}
@@ -952,7 +952,7 @@ export default function ProjectDetailModal({ project, onClose, onUpdateProject }
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Stage Notes</h3>
                 <p className="text-sm text-gray-600 mb-3">
-                  Add notes specific to the {status.label} stage. These will be saved with this stage's history.
+                  Add notes specific to the {status.label} stage. These will be saved with this stage&apos;s history.
                 </p>
                 <textarea
                   value={stageNotes}

@@ -34,7 +34,12 @@ interface AspireProperty {
   AccountOwnerContactID: number | null;
 }
 
-async function callAspireAPI(endpoint: string, orderByField?: string, pageNumber: number = 1): Promise<any[]> {
+interface AspireApiResponse {
+  value?: unknown[];
+  [key: string]: unknown;
+}
+
+async function callAspireAPI(endpoint: string, orderByField?: string, pageNumber: number = 1): Promise<unknown[]> {
   console.log(`[API CALL] Calling Aspire API via proxy: ${endpoint} (page ${pageNumber})`);
   
   const timestamp = Date.now();
@@ -59,20 +64,20 @@ async function callAspireAPI(endpoint: string, orderByField?: string, pageNumber
     throw new Error(`Aspire API error: ${response.status} ${text}`);
   }
   
-  const data = await response.json();
+  const data = await response.json() as AspireApiResponse | unknown[];
   console.log(`[API CALL] Response type: ${Array.isArray(data) ? 'array' : 'object'}`);
-  console.log(`[API CALL] Data keys: ${Object.keys(data).join(', ')}`);
+  console.log(`[API CALL] Data keys: ${Object.keys(data as object).join(', ')}`);
   
-  const result = Array.isArray(data) ? data : (data.value || []);
+  const result = Array.isArray(data) ? data : ((data as AspireApiResponse).value || []);
   console.log(`[API CALL] Page ${pageNumber}: Returning ${result.length} records`);
   
   return result;
 }
 
-async function fetchAllPages(endpoint: string, orderByField?: string): Promise<any[]> {
+async function fetchAllPages(endpoint: string, orderByField?: string): Promise<unknown[]> {
   console.log(`[PAGINATION] Starting to fetch all pages from ${endpoint}`);
   
-  let allRecords: any[] = [];
+  let allRecords: unknown[] = [];
   let pageNumber = 1;
   let hasMorePages = true;
   
@@ -111,7 +116,7 @@ async function fetchOpportunitiesWithCutoff(cutoffDate: Date): Promise<AspireOpp
   
   while (shouldContinue) {
     console.log(`[SMART FETCH] Fetching opportunities page ${pageNumber}...`);
-    const pageRecords = await callAspireAPI('/Opportunities', 'OpportunityID', pageNumber);
+    const pageRecords = await callAspireAPI('/Opportunities', 'OpportunityID', pageNumber) as AspireOpportunity[];
     
     if (pageRecords.length === 0) {
       console.log(`[SMART FETCH] No more records, stopping`);
@@ -161,7 +166,19 @@ async function fetchOpportunitiesWithCutoff(cutoffDate: Date): Promise<AspireOpp
   return allOpportunities;
 }
 
-export async function syncAspireOpportunities(supabase: any, testLimit?: number) {
+interface SupabaseClient {
+  from: (table: string) => {
+    select: (columns: string) => {
+      eq: (column: string, value: string | number) => {
+        single: () => Promise<{ data: Record<string, unknown> | null; error: unknown }>;
+      };
+    };
+    upsert: (data: Record<string, unknown>, options?: { onConflict?: string; ignoreDuplicates?: boolean }) => Promise<{ error: unknown }>;
+  };
+  rpc: (functionName: string, params: Record<string, unknown>) => Promise<void>;
+}
+
+export async function syncAspireOpportunities(supabase: SupabaseClient, testLimit?: number) {
   console.log('Starting Aspire sync...');
   
   try {
@@ -175,7 +192,7 @@ export async function syncAspireOpportunities(supabase: any, testLimit?: number)
     
     // Step 2: Get ALL properties with pagination (need complete lookup map)
     console.log('Fetching all properties with pagination...');
-    const allProperties: AspireProperty[] = await fetchAllPages('/Properties');
+    const allProperties = await fetchAllPages('/Properties') as AspireProperty[];
     console.log(`Total properties found: ${allProperties.length}`);
     
     // Create a lookup map: PropertyName -> AccountOwnerContactName
@@ -282,8 +299,8 @@ export async function syncAspireOpportunities(supabase: any, testLimit?: number)
           opportunity_id: opp.OpportunityID,
           property: opp.PropertyName || 'Unknown Property',
           opp_name: opp.OpportunityName,
-          stage: existing?.stage || 'proposal_verification',
-          materials_status: existing?.materials_status || 'need_to_order',
+          stage: (existing?.data as Record<string, unknown>)?.stage || 'proposal_verification',
+          materials_status: (existing?.data as Record<string, unknown>)?.materials_status || 'need_to_order',
           value: value,
           client_specialist: accountManager || 'Unknown',
           enh_specialist: opp.SalesRepContactName || 'Unknown',
@@ -296,24 +313,24 @@ export async function syncAspireOpportunities(supabase: any, testLimit?: number)
           estimated_material_cost: opp.EstimatedMaterialCost || null,
           actual_cost_material: opp.ActualCostMaterial || null,
           estimator_notes: opp.EstimatorNotes || null,
-          notes: existing?.notes || opp.EstimatorNotes || null,
-          notes_by: existing?.notes_by || null,
-          notes_date: existing?.notes_date || null,
-          current_stage_notes: existing?.current_stage_notes || null,
-          current_stage_notes_by: existing?.current_stage_notes_by || null,
-          current_stage_notes_date: existing?.current_stage_notes_date || null,
+          notes: (existing?.data as Record<string, unknown>)?.notes || opp.EstimatorNotes || null,
+          notes_by: (existing?.data as Record<string, unknown>)?.notes_by || null,
+          notes_date: (existing?.data as Record<string, unknown>)?.notes_date || null,
+          current_stage_notes: (existing?.data as Record<string, unknown>)?.current_stage_notes || null,
+          current_stage_notes_by: (existing?.data as Record<string, unknown>)?.current_stage_notes_by || null,
+          current_stage_notes_date: (existing?.data as Record<string, unknown>)?.current_stage_notes_date || null,
           created_date: opp.CreatedDateTime || new Date().toISOString(),
           scheduled_date: opp.StartDate || null,
           won_date: opp.WonDate || null,
           completed_date: opp.CompleteDate || null,
-          initial_meeting_scheduled_date: existing?.initial_meeting_scheduled_date || null,
-          before_photo_link: existing?.before_photo_link || null,
-          before_photo_date: existing?.before_photo_date || null,
-          progress_photo_links: existing?.progress_photo_links || null,
-          completion_photo_link: existing?.completion_photo_link || null,
-          completion_photo_date: existing?.completion_photo_date || null,
-          materials_vendors: existing?.materials_vendors || null,
-          field_supervisor: existing?.field_supervisor || null,
+          initial_meeting_scheduled_date: (existing?.data as Record<string, unknown>)?.initial_meeting_scheduled_date || null,
+          before_photo_link: (existing?.data as Record<string, unknown>)?.before_photo_link || null,
+          before_photo_date: (existing?.data as Record<string, unknown>)?.before_photo_date || null,
+          progress_photo_links: (existing?.data as Record<string, unknown>)?.progress_photo_links || null,
+          completion_photo_link: (existing?.data as Record<string, unknown>)?.completion_photo_link || null,
+          completion_photo_date: (existing?.data as Record<string, unknown>)?.completion_photo_date || null,
+          materials_vendors: (existing?.data as Record<string, unknown>)?.materials_vendors || null,
+          field_supervisor: (existing?.data as Record<string, unknown>)?.field_supervisor || null,
           requires_irrigation: false,
           requires_spray: false,
           last_synced_from_aspire: new Date().toISOString(),
