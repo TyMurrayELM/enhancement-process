@@ -1,21 +1,61 @@
 'use client';
 
-import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Circle } from 'lucide-react';
 
 interface SyncProgressModalProps {
   isOpen: boolean;
   status: 'syncing' | 'success' | 'error';
   message?: string;
   syncedCount?: number;
+  currentStage?: number; // 0 = fetching opportunities, 1 = fetching property data, 2 = updating database
 }
 
 export default function SyncProgressModal({ 
   isOpen, 
   status, 
   message,
-  syncedCount 
+  syncedCount,
+  currentStage = 0
 }: SyncProgressModalProps) {
   if (!isOpen) return null;
+
+  const stages = [
+    'Fetching opportunities from Aspire',
+    'Fetching property data',
+    'Updating database'
+  ];
+
+  const getStageIcon = (stageIndex: number) => {
+    if (status !== 'syncing') {
+      // All stages complete
+      return <CheckCircle className="text-green-600" size={20} />;
+    }
+    
+    if (stageIndex < currentStage) {
+      // Completed stage
+      return <CheckCircle className="text-green-600" size={20} />;
+    } else if (stageIndex === currentStage) {
+      // Current stage
+      return <Loader2 className="text-blue-600 animate-spin" size={20} />;
+    } else {
+      // Upcoming stage
+      return <Circle className="text-gray-300" size={20} />;
+    }
+  };
+
+  const getStageTextColor = (stageIndex: number) => {
+    if (status !== 'syncing') {
+      return 'text-green-700 font-medium';
+    }
+    
+    if (stageIndex < currentStage) {
+      return 'text-green-700';
+    } else if (stageIndex === currentStage) {
+      return 'text-blue-700 font-semibold';
+    } else {
+      return 'text-gray-400';
+    }
+  };
 
   return (
     <div className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center p-4 z-50">
@@ -29,22 +69,29 @@ export default function SyncProgressModal({
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 Syncing from Aspire...
               </h3>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 mb-6">
                 Please wait while we fetch the latest opportunities.
               </p>
-              <div className="mt-4 space-y-2">
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-700">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
-                  Fetching opportunities from Aspire
-                </div>
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-700">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse delay-100"></div>
-                  Fetching property data
-                </div>
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-700">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse delay-200"></div>
-                  Updating database
-                </div>
+              <div className="space-y-3">
+                {stages.map((stage, index) => (
+                  <div 
+                    key={index}
+                    className={`flex items-center gap-3 p-3 rounded-lg transition-all ${
+                      index === currentStage 
+                        ? 'bg-blue-50 border border-blue-200' 
+                        : index < currentStage
+                        ? 'bg-green-50 border border-green-200'
+                        : 'bg-gray-50 border border-gray-200'
+                    }`}
+                  >
+                    <div className="flex-shrink-0">
+                      {getStageIcon(index)}
+                    </div>
+                    <span className={`text-sm ${getStageTextColor(index)}`}>
+                      {stage}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -57,9 +104,20 @@ export default function SyncProgressModal({
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 Sync Complete!
               </h3>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 mb-4">
                 {message || `Successfully synced ${syncedCount || 0} opportunities`}
               </p>
+              <div className="space-y-2">
+                {stages.map((stage, index) => (
+                  <div 
+                    key={index}
+                    className="flex items-center gap-3 p-2 rounded-lg bg-green-50 border border-green-200"
+                  >
+                    <CheckCircle className="text-green-600" size={16} />
+                    <span className="text-xs text-green-700">{stage}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

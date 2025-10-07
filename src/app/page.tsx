@@ -24,7 +24,26 @@ export default function DashboardPage() {
   const [syncStatus, setSyncStatus] = useState<'syncing' | 'success' | 'error'>('syncing');
   const [syncMessage, setSyncMessage] = useState('');
   const [syncedCount, setSyncedCount] = useState(0);
+  const [currentStage, setCurrentStage] = useState(0);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+
+  // Fetch last sync time from database on mount
+  useEffect(() => {
+    const fetchLastSyncTime = async () => {
+      try {
+        const response = await fetch('/api/last-sync-time');
+        const data = await response.json();
+        if (data.lastSyncTime) {
+          setLastSyncTime(data.lastSyncTime);
+        }
+      } catch (error) {
+        console.error('Failed to fetch last sync time:', error);
+      }
+    };
+    
+    fetchLastSyncTime();
+  }, []);
   
   // Filter states
   const [filterStatus, setFilterStatus] = useState('all');
@@ -45,26 +64,42 @@ export default function DashboardPage() {
     return { regions, branches, clientSpecialists, enhSpecialists };
   }, [activeProjects]);
 
-  // Apply all filters
-  const filteredProjects = useMemo(() => {
+  // DEMOGRAPHIC FILTERS: Used for Stats Bar - shows ALL stages (including proposal)
+  const demographicFilteredProjects = useMemo(() => {
+    let filtered = projects;
+    
+    if (filterRegion !== 'all') {
+      filtered = filtered.filter(p => p.regionName === filterRegion);
+    }
+    if (filterBranch !== 'all') {
+      filtered = filtered.filter(p => p.branchName === filterBranch);
+    }
+    if (filterClientSpecialist !== 'all') {
+      filtered = filtered.filter(p => p.accountManager === filterClientSpecialist);
+    }
+    if (filterEnhSpecialist !== 'all') {
+      filtered = filtered.filter(p => p.specialist === filterEnhSpecialist);
+    }
+    
+    return filtered;
+  }, [projects, filterRegion, filterBranch, filterClientSpecialist, filterEnhSpecialist]);
+
+  // TABLE FILTERS: Used for Project Table - filters by status AND demographics
+  const tableFilteredProjects = useMemo(() => {
     let filtered = activeProjects;
     
     if (filterStatus !== 'all') {
       filtered = filtered.filter(p => p.status === filterStatus);
     }
-    
     if (filterRegion !== 'all') {
       filtered = filtered.filter(p => p.regionName === filterRegion);
     }
-    
     if (filterBranch !== 'all') {
       filtered = filtered.filter(p => p.branchName === filterBranch);
     }
-    
     if (filterClientSpecialist !== 'all') {
       filtered = filtered.filter(p => p.accountManager === filterClientSpecialist);
     }
-    
     if (filterEnhSpecialist !== 'all') {
       filtered = filtered.filter(p => p.specialist === filterEnhSpecialist);
     }
@@ -97,19 +132,50 @@ export default function DashboardPage() {
     return null;
   }
 
+  // Format last sync time for Arizona timezone
+  const formatLastSync = (isoString: string | null) => {
+    if (!isoString) return null;
+    const date = new Date(isoString);
+    return date.toLocaleString('en-US', {
+      timeZone: 'America/Phoenix',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
   const handleSync = async () => {
     setSyncing(true);
     setSyncStatus('syncing');
     setSyncMessage('');
+    setCurrentStage(0);
+    
+    // Simulate progress through stages - adjusted to match ~60 second sync time
+    const stageTimer1 = setTimeout(() => setCurrentStage(1), 20000); // 20 seconds for fetching opportunities
+    const stageTimer2 = setTimeout(() => setCurrentStage(2), 40000); // 40 seconds for fetching property data
+    // Stage 3 starts when sync actually completes
     
     try {
       const response = await fetch('/api/sync-aspire', { method: 'POST' });
       const result = await response.json();
       
+      // Clear timers if sync completes early
+      clearTimeout(stageTimer1);
+      clearTimeout(stageTimer2);
+      
       if (response.ok) {
+        setCurrentStage(3); // All stages complete
         setSyncStatus('success');
         setSyncedCount(result.synced || 0);
         setSyncMessage(`Successfully synced ${result.synced} opportunities`);
+        
+        // Save sync timestamp
+        const now = new Date().toISOString();
+        localStorage.setItem('lastAspireSync', now);
+        setLastSyncTime(now);
         
         setTimeout(() => {
           setSyncing(false);
@@ -124,6 +190,10 @@ export default function DashboardPage() {
         }, 3000);
       }
     } catch (error) {
+      // Clear timers on error
+      clearTimeout(stageTimer1);
+      clearTimeout(stageTimer2);
+      
       setSyncStatus('error');
       setSyncMessage('Network error: ' + error);
       
@@ -155,13 +225,20 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <button 
-                onClick={handleSync}
-                disabled={syncing}
-                className="bg-green-600 text-white px-5 py-2.5 rounded-lg hover:bg-green-700 transition-colors font-medium shadow-sm disabled:bg-gray-400"
-              >
-                {syncing ? 'Syncing...' : 'Sync from Aspire'}
-              </button>
+              <div className="text-right">
+                <button 
+                  onClick={handleSync}
+                  disabled={syncing}
+                  className="bg-green-600 text-white px-5 py-2.5 rounded-lg hover:bg-green-700 transition-colors font-medium shadow-sm disabled:bg-gray-400"
+                >
+                  {syncing ? 'Syncing...' : 'Sync from Aspire'}
+                </button>
+                {lastSyncTime && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Last synced: {formatLastSync(lastSyncTime)}
+                  </p>
+                )}
+              </div>
               
               {/* User Menu */}
               <div className="relative">
@@ -178,27 +255,27 @@ export default function DashboardPage() {
                       className="rounded-full"
                     />
                   ) : (
-                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                      <User className="text-white" size={18} />
-                    </div>
+                    <User className="text-gray-600" size={20} />
                   )}
-                  <div className="text-left">
-                    <p className="text-sm font-medium text-gray-900">{session.user?.name}</p>
-                    <p className="text-xs text-gray-500">{session.user?.email}</p>
-                  </div>
+                  <span className="text-sm font-medium text-gray-700">
+                    {session.user?.name || session.user?.email}
+                  </span>
                 </button>
 
-                {/* Dropdown Menu */}
                 {showUserMenu && (
                   <>
                     <div 
-                      className="fixed inset-0 z-10" 
+                      className="fixed inset-0 z-10"
                       onClick={() => setShowUserMenu(false)}
                     />
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
+                      <div className="px-4 py-2 border-b border-gray-200">
+                        <p className="text-sm font-medium text-gray-900">{session.user?.name}</p>
+                        <p className="text-xs text-gray-500 truncate">{session.user?.email}</p>
+                      </div>
                       <button
                         onClick={() => signOut({ callbackUrl: '/auth/signin' })}
-                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
                       >
                         <LogOut size={16} />
                         Sign Out
@@ -214,8 +291,8 @@ export default function DashboardPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-6">
-        {/* Stats */}
-        <StatsBar projects={filteredProjects} />
+        {/* Stats - Uses demographic filters only, shows ALL stages */}
+        <StatsBar projects={demographicFilteredProjects} />
 
         {/* Filters */}
         <FilterButtons
@@ -235,14 +312,14 @@ export default function DashboardPage() {
           enhSpecialists={filterOptions.enhSpecialists}
         />
 
-        {/* Project Table */}
+        {/* Project Table - Uses ALL filters including status */}
         <ProjectTable 
-          projects={filteredProjects}
+          projects={tableFilteredProjects}
           onViewDetails={setSelectedProject}
           onUpdateProject={updateProject}
         />
 
-        {filteredProjects.length === 0 && (
+        {tableFilteredProjects.length === 0 && (
           <div className="text-center py-12 bg-white rounded-lg shadow-sm">
             <p className="text-gray-500">No projects found with current filters</p>
           </div>
@@ -264,6 +341,7 @@ export default function DashboardPage() {
         status={syncStatus}
         message={syncMessage}
         syncedCount={syncedCount}
+        currentStage={currentStage}
       />
     </div>
   );
