@@ -103,10 +103,10 @@ function createGoogleCalendarUrl(project: Project, meetingDate: string): string 
     `WO#: ${project.aspireWoNumber || `#${project.id}`}\n` +
     `Property: ${project.clientName}\n` +
     `Opportunity: ${project.oppName || 'N/A'}\n` +
-    `Value: $${project.value.toLocaleString()}\n` +
+    `Value: ${project.value.toLocaleString()}\n` +
     `Client Specialist: ${project.accountManager}\n` +
-    `Enhancement Specialist: ${project.specialist}\n` +
-    `Aspire Link: ${aspireLink}\n\n` +
+    `Enhancement Specialist: ${project.specialist}\n\n` +
+    `View in Aspire:\n${aspireLink}\n\n` +
     `Agenda:\n` +
     `- Walk property and confirm scope\n` +
     `- Locate valves and timer stations${project.requiresIrrigation ? '' : ' (if applicable)'}\n` +
@@ -173,11 +173,11 @@ function createWarrantyCalendarUrl(project: Project, visitType: string, daysAfte
     `WO#: ${project.aspireWoNumber || `#${project.id}`}\n` +
     `Property: ${project.clientName}\n` +
     `Opportunity: ${project.oppName || 'N/A'}\n` +
-    `Value: $${project.value.toLocaleString()}\n` +
+    `Value: ${project.value.toLocaleString()}\n` +
     `Client Specialist: ${project.accountManager}\n` +
     `Enhancement Specialist: ${project.specialist}\n` +
-    `Field Supervisor: ${project.fieldSupervisor || 'TBD'}\n` +
-    `Aspire Link: ${aspireLink}\n\n` +
+    `Field Supervisor: ${project.fieldSupervisor || 'TBD'}\n\n` +
+    `View in Aspire:\n${aspireLink}\n\n` +
     `Inspection Tasks:\n` +
     `- Check health and condition of trees & shrubs\n` +
     `- Verify irrigation system functionality\n` +
