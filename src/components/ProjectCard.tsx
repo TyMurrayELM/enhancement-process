@@ -1,6 +1,6 @@
 import { Project } from '@/lib/types';
 import { statusConfig } from '@/lib/statusConfig';
-import { Image, CheckCircle } from 'lucide-react';
+import { Image as ImageIcon, CheckCircle } from 'lucide-react';
 
 interface ProjectCardProps {
   project: Project;
@@ -51,7 +51,7 @@ export default function ProjectCard({ project, onViewDetails }: ProjectCardProps
           )}
           {project.status === 'in_progress' && (
             <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded text-xs flex items-center gap-1 font-medium">
-              <Image size={12} />
+              <ImageIcon size={12} />
               {(project.beforePhotos || 0) + (project.progressPhotos || 0)}
             </span>
           )}
