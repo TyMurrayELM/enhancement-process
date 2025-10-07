@@ -69,11 +69,15 @@ interface DatabaseProject {
 
 // Helper function to calculate checklist progress
 function calculateChecklistProgress(project: DatabaseProject): { completed: number; total: number } {
-  const requirements = getStageRequirements(project.stage, {
-    ...project,
-    requiresIrrigation: project.requires_irrigation,
-    requiresSpray: project.requires_spray,
-  } as Project);
+  // Create a minimal project object with just what getStageRequirements needs
+  const minimalProject = {
+    status: project.stage as ProjectStatus,
+    value: project.value || 0,
+    requiresIrrigation: project.requires_irrigation || false,
+    requiresSpray: project.requires_spray || false,
+  } as Project;
+  
+  const requirements = getStageRequirements(project.stage, minimalProject);
   
   const total = requirements.length;
   let completed = 0;
