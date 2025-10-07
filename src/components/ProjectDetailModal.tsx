@@ -799,15 +799,23 @@ export default function ProjectDetailModal({ project, onClose, onUpdateProject }
                   {requirements.map((item) => {
                     // Get warranty follow-up dates if this is a warranty period task
                     let dueDate: string | null = null;
-                    if (project.status === 'follow_up' && project.completedDate) {
-                      if (item.id === 'weekOneInspection') {
-                        dueDate = getFollowUpDate(project.completedDate, 7);
-                      } else if (item.id === 'month1Visit') {
-                        dueDate = getFollowUpDate(project.completedDate, 30);
-                      } else if (item.id === 'month2Visit') {
-                        dueDate = getFollowUpDate(project.completedDate, 60);
-                      } else if (item.id === 'month3Visit') {
-                        dueDate = getFollowUpDate(project.completedDate, 90);
+                    let showNotCompleteWarning = false;
+                    
+                    if (project.status === 'follow_up') {
+                      if (item.id === 'weekOneInspection' || item.id === 'month1Visit' || item.id === 'month2Visit' || item.id === 'month3Visit') {
+                        if (!project.completedDate) {
+                          showNotCompleteWarning = true;
+                        } else {
+                          if (item.id === 'weekOneInspection') {
+                            dueDate = getFollowUpDate(project.completedDate, 7);
+                          } else if (item.id === 'month1Visit') {
+                            dueDate = getFollowUpDate(project.completedDate, 30);
+                          } else if (item.id === 'month2Visit') {
+                            dueDate = getFollowUpDate(project.completedDate, 60);
+                          } else if (item.id === 'month3Visit') {
+                            dueDate = getFollowUpDate(project.completedDate, 90);
+                          }
+                        }
                       }
                     }
 
@@ -1129,7 +1137,11 @@ export default function ProjectDetailModal({ project, onClose, onUpdateProject }
                                       <span className="text-gray-900 font-medium">{item.label}</span>
                                       <span className="ml-2 text-xs text-red-600 font-medium">REQUIRED</span>
                                     </div>
-                                    {dueDate && (
+                                    {showNotCompleteWarning ? (
+                                      <span className="text-xs text-red-600 font-semibold mt-1">
+                                        Opportunity not yet complete in Aspire
+                                      </span>
+                                    ) : dueDate && (
                                       <span className="text-xs text-blue-600 font-medium mt-1">
                                         Due: {dueDate}
                                       </span>
@@ -1138,12 +1150,16 @@ export default function ProjectDetailModal({ project, onClose, onUpdateProject }
                                   
                                   <div className="flex items-center gap-2">
                                     {/* Add calendar button for warranty visits */}
-                                    {project.status === 'follow_up' && project.completedDate && 
+                                    {project.status === 'follow_up' && 
                                       (item.id === 'weekOneInspection' || item.id === 'month1Visit' || item.id === 'month2Visit' || item.id === 'month3Visit') && (
                                       <button
                                         onClick={(e) => {
                                           e.preventDefault();
                                           e.stopPropagation();
+                                          if (!project.completedDate) {
+                                            alert('Cannot schedule until the opportunity is marked complete in Aspire');
+                                            return;
+                                          }
                                           const visitTypes: { [key: string]: { type: string; days: number } } = {
                                             weekOneInspection: { type: 'weekOne', days: 7 },
                                             month1Visit: { type: 'month1', days: 30 },
@@ -1154,8 +1170,13 @@ export default function ProjectDetailModal({ project, onClose, onUpdateProject }
                                           const calendarUrl = createWarrantyCalendarUrl(project, visitInfo.type, visitInfo.days);
                                           window.open(calendarUrl, '_blank');
                                         }}
-                                        className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5 text-xs font-medium whitespace-nowrap"
-                                        title="Create calendar invite for this visit"
+                                        disabled={!project.completedDate}
+                                        className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-medium whitespace-nowrap ${
+                                          project.completedDate
+                                            ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                        }`}
+                                        title={project.completedDate ? 'Create calendar invite for this visit' : 'Complete opportunity in Aspire first'}
                                       >
                                         <Image
                                           src="/icons/googlecalendaricon.png"
