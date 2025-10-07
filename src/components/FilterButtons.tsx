@@ -51,19 +51,21 @@ export default function FilterButtons({
           >
             All Active Projects
           </button>
-          {Object.entries(statusConfig).map(([key, config]) => (
-            <button
-              key={key}
-              onClick={() => onFilterStatusChange(key)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                filterStatus === key
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200'
-              }`}
-            >
-              {config.label}
-            </button>
-          ))}
+          {Object.entries(statusConfig)
+            .filter(([key]) => key !== 'proposal') // Hide proposal stage
+            .map(([key, config]) => (
+              <button
+                key={key}
+                onClick={() => onFilterStatusChange(key)}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  filterStatus === key
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200'
+                }`}
+              >
+                {config.label}
+              </button>
+            ))}
         </div>
       </div>
 
