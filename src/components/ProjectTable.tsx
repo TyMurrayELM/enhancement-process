@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Project, getAspireLink } from '@/lib/types';
+import { Project, getAspireLink, MaterialsStatus } from '@/lib/types';
 import { statusConfig } from '@/lib/statusConfig';
 import { materialsConfig } from '@/lib/materialsConfig';
 import { CheckCircle, ExternalLink, Play, FileText, Check } from 'lucide-react';
@@ -50,14 +50,14 @@ export default function ProjectTable({ projects, onViewDetails, onUpdateProject 
   const [notesProject, setNotesProject] = useState<Project | null>(null);
   const [materialsDropdownOpen, setMaterialsDropdownOpen] = useState<number | null>(null);
 
-  const handleSaveNotes = async (updatedProject: Project, notes: string) => {
+  const handleSaveNotes = async (updatedProject: Project) => {
     onUpdateProject(updatedProject);
   };
 
   const handleMaterialsStatusChange = (project: Project, newStatus: string) => {
     onUpdateProject({
       ...project,
-      materialsStatus: newStatus as any
+      materialsStatus: newStatus as MaterialsStatus
     });
     setMaterialsDropdownOpen(null);
   };
@@ -82,7 +82,7 @@ export default function ProjectTable({ projects, onViewDetails, onUpdateProject 
                 Stage
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                Est $'s
+                Est $&apos;s
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 Client Specialist
@@ -226,7 +226,7 @@ export default function ProjectTable({ projects, onViewDetails, onUpdateProject 
                       {/* Materials Status - Clickable Dropdown */}
                       <div className="relative">
                         <button
-                          onClick={(e) => {
+                          onClick={() => {
                             setMaterialsDropdownOpen(materialsDropdownOpen === project.id ? null : project.id);
                           }}
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-colors hover:opacity-80 ${materialsStatus.color}`}
