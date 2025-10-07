@@ -71,7 +71,11 @@ function createGoogleCalendarUrl(project: Project, meetingDate: string): string 
   const startDateStr = formatGoogleCalendarDate(date);
   const endDateStr = formatGoogleCalendarDate(endDate);
   
-  const title = encodeURIComponent(`Initial Site Meeting - ${project.clientName}`);
+  const titleParts = ['Initial Site Meeting', project.clientName];
+  if (project.oppName) {
+    titleParts.push(project.oppName);
+  }
+  const title = encodeURIComponent(titleParts.join(' - '));
   const location = encodeURIComponent(project.clientName);
   const details = encodeURIComponent(
     `Initial on-site meeting for enhancement project\n\n` +
@@ -725,7 +729,10 @@ export default function ProjectDetailModal({ project, onClose, onUpdateProject }
                                   }`}
                                   title={initialMeetingDate ? 'Create Google Calendar invite' : 'Select a date first'}
                                 >
-                                  <Calendar size={16} />
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                    <rect width="24" height="24" rx="4" fill="white"/>
+                                    <path d="M19 4h-1V3c0-.55-.45-1-1-1s-1 .45-1 1v1H8V3c0-.55-.45-1-1-1s-1 .45-1 1v1H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM5 8V6h14v2H5zm2 4h5v5H7v-5z" fill="#1a73e8"/>
+                                  </svg>
                                   Create Invite
                                 </button>
                               </div>
