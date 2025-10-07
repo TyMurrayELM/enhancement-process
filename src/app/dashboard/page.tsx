@@ -21,7 +21,7 @@ export default function DashboardPage() {
   const [filterClientSpecialist, setFilterClientSpecialist] = useState('all');
   const [filterEnhSpecialist, setFilterEnhSpecialist] = useState('all');
 
-  const activeProjects = projects.filter(p => p.status !== 'proposal' as any);
+  const activeProjects = projects.filter(p => p.status !== 'proposal');
   
   // Extract unique values for filter dropdowns
   const filterOptions = useMemo(() => {
@@ -142,6 +142,7 @@ export default function DashboardPage() {
         <ProjectTable 
           projects={filteredProjects}
           onViewDetails={setSelectedProject}
+          onUpdateProject={updateProject}
         />
 
         {filteredProjects.length === 0 && (
