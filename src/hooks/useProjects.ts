@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Project, ProjectStatus } from '@/lib/types';
+import { Project, ProjectStatus, MaterialsStatus } from '@/lib/types';
 import { getStageRequirements } from '@/utils/requirements';
 
 interface DatabaseProject {
@@ -111,7 +111,7 @@ function mapDatabaseToProject(row: DatabaseProject): Project {
     clientName: row.property || 'Unknown Property',
     oppName: row.opp_name,
     status: row.stage as ProjectStatus,
-    materialsStatus: row.materials_status || 'need_to_order',
+    materialsStatus: (row.materials_status as MaterialsStatus) || 'need_to_order',
     value: row.value || 0,
     accountManager: row.client_specialist || 'Unknown',
     specialist: row.enh_specialist || 'Unknown',
