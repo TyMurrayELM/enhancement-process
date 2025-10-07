@@ -33,14 +33,9 @@ export default function DashboardPage() {
     return { regions, branches, clientSpecialists, enhSpecialists };
   }, [activeProjects]);
 
-  // Apply all filters
-  const filteredProjects = useMemo(() => {
+  // Apply demographic filters ONLY (Region, Branch, Specialists) - for StatsBar
+  const demographicFilteredProjects = useMemo(() => {
     let filtered = activeProjects;
-    
-    // Filter by status
-    if (filterStatus !== 'all') {
-      filtered = filtered.filter(p => p.status === filterStatus);
-    }
     
     // Filter by region
     if (filterRegion !== 'all') {
@@ -63,7 +58,19 @@ export default function DashboardPage() {
     }
     
     return filtered;
-  }, [activeProjects, filterStatus, filterRegion, filterBranch, filterClientSpecialist, filterEnhSpecialist]);
+  }, [activeProjects, filterRegion, filterBranch, filterClientSpecialist, filterEnhSpecialist]);
+
+  // Apply ALL filters including status - for ProjectTable
+  const tableFilteredProjects = useMemo(() => {
+    let filtered = demographicFilteredProjects;
+    
+    // Filter by status (stage)
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(p => p.status === filterStatus);
+    }
+    
+    return filtered;
+  }, [demographicFilteredProjects, filterStatus]);
 
   const handleSync = async () => {
     setSyncing(true);
@@ -117,8 +124,8 @@ export default function DashboardPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-6">
-        {/* Stats */}
-        <StatsBar projects={activeProjects} />
+        {/* Stats - Uses demographic filters only, shows ALL stages */}
+        <StatsBar projects={demographicFilteredProjects} />
 
         {/* Filters */}
         <FilterButtons
@@ -138,14 +145,14 @@ export default function DashboardPage() {
           enhSpecialists={filterOptions.enhSpecialists}
         />
 
-        {/* Project Table */}
+        {/* Project Table - Uses ALL filters including status */}
         <ProjectTable 
-          projects={filteredProjects}
+          projects={tableFilteredProjects}
           onViewDetails={setSelectedProject}
           onUpdateProject={updateProject}
         />
 
-        {filteredProjects.length === 0 && (
+        {tableFilteredProjects.length === 0 && (
           <div className="text-center py-12 bg-white rounded-lg shadow-sm">
             <p className="text-gray-500">No projects found with current filters</p>
           </div>
