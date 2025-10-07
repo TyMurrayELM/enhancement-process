@@ -1,6 +1,6 @@
 import { Project } from '@/lib/types';
 import { statusConfig } from '@/lib/statusConfig';
-import { Calendar, Image, CheckCircle } from 'lucide-react';
+import { Image, CheckCircle } from 'lucide-react';
 
 interface ProjectCardProps {
   project: Project;

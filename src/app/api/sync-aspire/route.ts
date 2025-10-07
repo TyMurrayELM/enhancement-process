@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { syncAspireOpportunities } from '@/lib/aspireSync';
 
-export async function POST(request: Request) {
+export async function POST() {
   try {
     // Optional: Add authentication check here
     // const session = await getSession();
