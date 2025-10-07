@@ -1,3 +1,5 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
+
 const VERCEL_PROXY_URL = 'https://aspire-api--psi.vercel.app/api/aspire-proxy';
 const ASPIRE_CLIENT_ID = process.env.ASPIRE_CLIENT_ID!;
 const ASPIRE_API_KEY = process.env.ASPIRE_API_KEY!;
@@ -166,18 +168,6 @@ async function fetchOpportunitiesWithCutoff(cutoffDate: Date): Promise<AspireOpp
   return allOpportunities;
 }
 
-interface SupabaseClient {
-  from: (table: string) => {
-    select: (columns: string) => {
-      eq: (column: string, value: string | number) => {
-        single: () => Promise<{ data: Record<string, unknown> | null; error: unknown }>;
-      };
-    };
-    upsert: (data: Record<string, unknown>, options?: { onConflict?: string; ignoreDuplicates?: boolean }) => Promise<{ error: unknown }>;
-  };
-  rpc: (functionName: string, params: Record<string, unknown>) => Promise<void>;
-}
-
 export async function syncAspireOpportunities(supabase: SupabaseClient, testLimit?: number) {
   console.log('Starting Aspire sync...');
   
@@ -299,8 +289,8 @@ export async function syncAspireOpportunities(supabase: SupabaseClient, testLimi
           opportunity_id: opp.OpportunityID,
           property: opp.PropertyName || 'Unknown Property',
           opp_name: opp.OpportunityName,
-          stage: (existing?.data as Record<string, unknown>)?.stage || 'proposal_verification',
-          materials_status: (existing?.data as Record<string, unknown>)?.materials_status || 'need_to_order',
+          stage: (existing?.stage as string) || 'proposal_verification',
+          materials_status: (existing?.materials_status as string) || 'need_to_order',
           value: value,
           client_specialist: accountManager || 'Unknown',
           enh_specialist: opp.SalesRepContactName || 'Unknown',
@@ -313,24 +303,24 @@ export async function syncAspireOpportunities(supabase: SupabaseClient, testLimi
           estimated_material_cost: opp.EstimatedMaterialCost || null,
           actual_cost_material: opp.ActualCostMaterial || null,
           estimator_notes: opp.EstimatorNotes || null,
-          notes: (existing?.data as Record<string, unknown>)?.notes || opp.EstimatorNotes || null,
-          notes_by: (existing?.data as Record<string, unknown>)?.notes_by || null,
-          notes_date: (existing?.data as Record<string, unknown>)?.notes_date || null,
-          current_stage_notes: (existing?.data as Record<string, unknown>)?.current_stage_notes || null,
-          current_stage_notes_by: (existing?.data as Record<string, unknown>)?.current_stage_notes_by || null,
-          current_stage_notes_date: (existing?.data as Record<string, unknown>)?.current_stage_notes_date || null,
+          notes: (existing?.notes as string) || opp.EstimatorNotes || null,
+          notes_by: (existing?.notes_by as string) || null,
+          notes_date: (existing?.notes_date as string) || null,
+          current_stage_notes: (existing?.current_stage_notes as string) || null,
+          current_stage_notes_by: (existing?.current_stage_notes_by as string) || null,
+          current_stage_notes_date: (existing?.current_stage_notes_date as string) || null,
           created_date: opp.CreatedDateTime || new Date().toISOString(),
           scheduled_date: opp.StartDate || null,
           won_date: opp.WonDate || null,
           completed_date: opp.CompleteDate || null,
-          initial_meeting_scheduled_date: (existing?.data as Record<string, unknown>)?.initial_meeting_scheduled_date || null,
-          before_photo_link: (existing?.data as Record<string, unknown>)?.before_photo_link || null,
-          before_photo_date: (existing?.data as Record<string, unknown>)?.before_photo_date || null,
-          progress_photo_links: (existing?.data as Record<string, unknown>)?.progress_photo_links || null,
-          completion_photo_link: (existing?.data as Record<string, unknown>)?.completion_photo_link || null,
-          completion_photo_date: (existing?.data as Record<string, unknown>)?.completion_photo_date || null,
-          materials_vendors: (existing?.data as Record<string, unknown>)?.materials_vendors || null,
-          field_supervisor: (existing?.data as Record<string, unknown>)?.field_supervisor || null,
+          initial_meeting_scheduled_date: (existing?.initial_meeting_scheduled_date as string) || null,
+          before_photo_link: (existing?.before_photo_link as string) || null,
+          before_photo_date: (existing?.before_photo_date as string) || null,
+          progress_photo_links: (existing?.progress_photo_links as unknown) || null,
+          completion_photo_link: (existing?.completion_photo_link as string) || null,
+          completion_photo_date: (existing?.completion_photo_date as string) || null,
+          materials_vendors: (existing?.materials_vendors as string) || null,
+          field_supervisor: (existing?.field_supervisor as string) || null,
           requires_irrigation: false,
           requires_spray: false,
           last_synced_from_aspire: new Date().toISOString(),
