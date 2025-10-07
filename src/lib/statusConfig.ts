@@ -1,6 +1,12 @@
-import { Calendar, CheckCircle, Clock, AlertCircle, DollarSign, Archive } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, AlertCircle, DollarSign, Archive, FileText } from 'lucide-react';
 
 export const statusConfig = {
+  proposal: { 
+    label: "Proposal", 
+    color: "bg-gray-100 text-gray-800", 
+    icon: FileText, 
+    nextStatus: "proposal_verification" as const
+  },
   proposal_verification: { 
     label: "Proposal Verification", 
     color: "bg-blue-100 text-blue-800", 

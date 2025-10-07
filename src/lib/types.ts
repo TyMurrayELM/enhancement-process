@@ -1,4 +1,5 @@
 export type ProjectStatus = 
+  | 'proposal'
   | 'proposal_verification'
   | 'won_planning'
   | 'in_progress'

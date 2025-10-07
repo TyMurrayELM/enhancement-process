@@ -2,6 +2,8 @@ import { Project, ChecklistItem } from '@/lib/types';
 
 export const getStageRequirements = (status: string, project: Project): ChecklistItem[] => {
   switch(status) {
+    case 'proposal':
+      return [];
     case 'proposal_verification':
       return [
         { id: 'deliveryCharges', label: 'All delivery, dumps, fuel charges included in bid', required: true },
