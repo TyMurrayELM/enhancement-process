@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { Project } from '@/lib/types';
 import { statusConfig } from '@/lib/statusConfig';
 import { Save, X, Edit2, Check } from 'lucide-react';
+import Image from 'next/image';
 
 interface NotesModalProps {
   project: Project;
@@ -12,6 +14,7 @@ interface NotesModalProps {
 }
 
 export default function NotesModal({ project, onClose, onSave }: NotesModalProps) {
+  const { data: session } = useSession();
   const [notes, setNotes] = useState(project.notes || '');
   const [currentStageNotes, setCurrentStageNotes] = useState(project.currentStageNotes || '');
   const [stageHistory, setStageHistory] = useState(project.stageHistory || []);
@@ -21,11 +24,14 @@ export default function NotesModal({ project, onClose, onSave }: NotesModalProps
   const [isEditingGeneral, setIsEditingGeneral] = useState(false);
   const [isSavingStage, setIsSavingStage] = useState(false);
   const [isSavingGeneral, setIsSavingGeneral] = useState(false);
+  const [sendingSlackStage, setSendingSlackStage] = useState(false);
+  const [sendingSlackGeneral, setSendingSlackGeneral] = useState(false);
+  const [sendingSlackHistory, setSendingSlackHistory] = useState<number | null>(null);
 
   const handleSaveCurrentStageNotes = async () => {
     setIsSavingStage(true);
     try {
-      const currentUser = 'Current User'; // Placeholder until SSO is implemented
+      const currentUser = session?.user?.name || 'Current User';
       const currentDate = new Date().toISOString();
       
       const updatedProject = {
@@ -52,7 +58,7 @@ export default function NotesModal({ project, onClose, onSave }: NotesModalProps
   const handleSaveGeneralNotes = async () => {
     setIsSavingGeneral(true);
     try {
-      const currentUser = 'Current User'; // Placeholder until SSO is implemented
+      const currentUser = session?.user?.name || 'Current User';
       const currentDate = new Date().toISOString();
       
       const updatedProject = {
@@ -85,7 +91,7 @@ export default function NotesModal({ project, onClose, onSave }: NotesModalProps
 
   const handleSaveStageNote = async () => {
     if (editingStageIndex !== null && stageHistory) {
-      const currentUser = 'Current User'; // Placeholder until SSO is implemented
+      const currentUser = session?.user?.name || 'Current User';
       const currentDate = new Date().toISOString();
       
       const updatedStageHistory = [...stageHistory];
@@ -121,6 +127,218 @@ export default function NotesModal({ project, onClose, onSave }: NotesModalProps
   const handleCancelGeneralEdit = () => {
     setNotes(project.notes || '');
     setIsEditingGeneral(false);
+  };
+
+  // Send Current Stage Notes to Slack
+  const handleSendSlackStage = async () => {
+    if (!currentStageNotes.trim()) {
+      alert('Please enter a note before sending to Slack');
+      return;
+    }
+
+    setSendingSlackStage(true);
+    try {
+      const aspireDirectLink = project.opportunityId 
+        ? `https://cloud.youraspire.com/app/opportunities/details/${project.opportunityId}`
+        : null;
+
+      // Map branch name to Slack emoji
+      const getBranchEmoji = (branchName?: string): string | null => {
+        if (!branchName) return null;
+        const normalized = branchName.toLowerCase();
+        
+        if (normalized.includes('las vegas')) return ':fab_lv:';
+        if (normalized.includes('southwest') || normalized.includes('south west')) return ':sw:';
+        if (normalized.includes('southeast') || normalized.includes('south east')) return ':se:';
+        if (normalized.includes('north')) return ':n:';
+        if (normalized.includes('corporate') || normalized.includes('corp')) return ':corp:';
+        
+        return null;
+      };
+
+      const status = statusConfig[project.status];
+
+      const payload = {
+        event: 'stage_note_added',
+        stage: status.label,
+        stageName: project.status,
+        note: currentStageNotes,
+        projectNumber: project.aspireWoNumber || `ID-${project.id}`,
+        opportunityId: project.opportunityId,
+        aspireLink: aspireDirectLink,
+        propertyName: project.clientName,
+        oppName: project.oppName,
+        accountManager: project.accountManager,
+        specialist: project.specialist,
+        fieldSupervisor: project.fieldSupervisor || null,
+        value: project.value,
+        branchName: project.branchName,
+        branchEmoji: getBranchEmoji(project.branchName),
+        regionName: project.regionName,
+        sentBy: session?.user?.name || session?.user?.email || 'Unknown User',
+        sentByEmail: session?.user?.email || null,
+        sentAt: new Date().toISOString(),
+        projectUrl: `${window.location.origin}`
+      };
+
+      const response = await fetch('/api/zapier-webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send notification');
+      }
+
+      alert('✅ Slack notification sent!');
+    } catch (error) {
+      console.error('Slack notification error:', error);
+      alert('❌ Failed to send Slack notification');
+    } finally {
+      setSendingSlackStage(false);
+    }
+  };
+
+  // Send General Notes to Slack
+  const handleSendSlackGeneral = async () => {
+    if (!notes.trim()) {
+      alert('Please enter a note before sending to Slack');
+      return;
+    }
+
+    setSendingSlackGeneral(true);
+    try {
+      const aspireDirectLink = project.opportunityId 
+        ? `https://cloud.youraspire.com/app/opportunities/details/${project.opportunityId}`
+        : null;
+
+      // Map branch name to Slack emoji
+      const getBranchEmoji = (branchName?: string): string | null => {
+        if (!branchName) return null;
+        const normalized = branchName.toLowerCase();
+        
+        if (normalized.includes('las vegas')) return ':fab_lv:';
+        if (normalized.includes('southwest') || normalized.includes('south west')) return ':sw:';
+        if (normalized.includes('southeast') || normalized.includes('south east')) return ':se:';
+        if (normalized.includes('north')) return ':n:';
+        if (normalized.includes('corporate') || normalized.includes('corp')) return ':corp:';
+        
+        return null;
+      };
+
+      const payload = {
+        event: 'general_note_added',
+        stage: 'General Project Notes',
+        stageName: 'general',
+        note: notes,
+        projectNumber: project.aspireWoNumber || `ID-${project.id}`,
+        opportunityId: project.opportunityId,
+        aspireLink: aspireDirectLink,
+        propertyName: project.clientName,
+        oppName: project.oppName,
+        accountManager: project.accountManager,
+        specialist: project.specialist,
+        fieldSupervisor: project.fieldSupervisor || null,
+        value: project.value,
+        branchName: project.branchName,
+        branchEmoji: getBranchEmoji(project.branchName),
+        regionName: project.regionName,
+        sentBy: session?.user?.name || session?.user?.email || 'Unknown User',
+        sentByEmail: session?.user?.email || null,
+        sentAt: new Date().toISOString(),
+        projectUrl: `${window.location.origin}`
+      };
+
+      const response = await fetch('/api/zapier-webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send notification');
+      }
+
+      alert('✅ Slack notification sent!');
+    } catch (error) {
+      console.error('Slack notification error:', error);
+      alert('❌ Failed to send Slack notification');
+    } finally {
+      setSendingSlackGeneral(false);
+    }
+  };
+
+  // Send Historical Stage Notes to Slack
+  const handleSendSlackHistory = async (index: number) => {
+    const stage = stageHistory[index];
+    if (!stage || !stage.notes?.trim()) {
+      alert('No note to send');
+      return;
+    }
+
+    setSendingSlackHistory(index);
+    try {
+      const aspireDirectLink = project.opportunityId 
+        ? `https://cloud.youraspire.com/app/opportunities/details/${project.opportunityId}`
+        : null;
+
+      // Map branch name to Slack emoji
+      const getBranchEmoji = (branchName?: string): string | null => {
+        if (!branchName) return null;
+        const normalized = branchName.toLowerCase();
+        
+        if (normalized.includes('las vegas')) return ':fab_lv:';
+        if (normalized.includes('southwest') || normalized.includes('south west')) return ':sw:';
+        if (normalized.includes('southeast') || normalized.includes('south east')) return ':se:';
+        if (normalized.includes('north')) return ':n:';
+        if (normalized.includes('corporate') || normalized.includes('corp')) return ':corp:';
+        
+        return null;
+      };
+
+      const stageConfig = statusConfig[stage.stage];
+
+      const payload = {
+        event: 'stage_note_added',
+        stage: stageConfig.label,
+        stageName: stage.stage,
+        note: stage.notes,
+        projectNumber: project.aspireWoNumber || `ID-${project.id}`,
+        opportunityId: project.opportunityId,
+        aspireLink: aspireDirectLink,
+        propertyName: project.clientName,
+        oppName: project.oppName,
+        accountManager: project.accountManager,
+        specialist: project.specialist,
+        fieldSupervisor: project.fieldSupervisor || null,
+        value: project.value,
+        branchName: project.branchName,
+        branchEmoji: getBranchEmoji(project.branchName),
+        regionName: project.regionName,
+        sentBy: session?.user?.name || session?.user?.email || 'Unknown User',
+        sentByEmail: session?.user?.email || null,
+        sentAt: new Date().toISOString(),
+        projectUrl: `${window.location.origin}`
+      };
+
+      const response = await fetch('/api/zapier-webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send notification');
+      }
+
+      alert('✅ Slack notification sent!');
+    } catch (error) {
+      console.error('Slack notification error:', error);
+      alert('❌ Failed to send Slack notification');
+    } finally {
+      setSendingSlackHistory(null);
+    }
   };
 
   const formatDate = (dateString: string): string => {
@@ -221,6 +439,25 @@ export default function NotesModal({ project, onClose, onSave }: NotesModalProps
                               by {stage.notesBy} {stage.notesDate && `• ${formatDate(stage.notesDate)}`}
                             </p>
                           )}
+                          <div className="mt-3">
+                            <button
+                              onClick={() => handleSendSlackHistory(index)}
+                              disabled={sendingSlackHistory === index}
+                              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Send note to Slack via Zapier"
+                            >
+                              <Image
+                                src="/icons/slack.png"
+                                alt="Slack"
+                                width={16}
+                                height={16}
+                                className="object-contain"
+                              />
+                              <span className="text-xs font-medium text-gray-700">
+                                {sendingSlackHistory === index ? 'Sending...' : 'Send to Slack'}
+                              </span>
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -299,6 +536,25 @@ export default function NotesModal({ project, onClose, onSave }: NotesModalProps
                             by {project.currentStageNotesBy} {project.currentStageNotesDate && `• ${formatDate(project.currentStageNotesDate)}`}
                           </p>
                         )}
+                        <div className="mt-3">
+                          <button
+                            onClick={handleSendSlackStage}
+                            disabled={sendingSlackStage}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Send note to Slack via Zapier"
+                          >
+                            <Image
+                              src="/icons/slack.png"
+                              alt="Slack"
+                              width={16}
+                              height={16}
+                              className="object-contain"
+                            />
+                            <span className="text-xs font-medium text-gray-700">
+                              {sendingSlackStage ? 'Sending...' : 'Send to Slack'}
+                            </span>
+                          </button>
+                        </div>
                       </>
                     ) : (
                       <p className="text-sm text-gray-500 italic bg-gray-100 p-3 rounded-lg border border-gray-300">
@@ -371,6 +627,25 @@ export default function NotesModal({ project, onClose, onSave }: NotesModalProps
                         by {project.notesBy} {project.notesDate && `• ${formatDate(project.notesDate)}`}
                       </p>
                     )}
+                    <div className="mt-3">
+                      <button
+                        onClick={handleSendSlackGeneral}
+                        disabled={sendingSlackGeneral}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Send note to Slack via Zapier"
+                      >
+                        <Image
+                          src="/icons/slack.png"
+                          alt="Slack"
+                          width={16}
+                          height={16}
+                          className="object-contain"
+                        />
+                        <span className="text-xs font-medium text-gray-700">
+                          {sendingSlackGeneral ? 'Sending...' : 'Send to Slack'}
+                        </span>
+                      </button>
+                    </div>
                   </>
                 ) : (
                   <p className="text-sm text-gray-500 italic bg-gray-100 p-4 rounded-lg border border-gray-300">
