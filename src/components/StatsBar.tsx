@@ -26,7 +26,7 @@ export default function StatsBar({ projects }: StatsBarProps) {
   };
 
   return (
-    <div className="grid grid-cols-7 gap-4 mb-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-6">
       <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg shadow-sm border-2 border-blue-300 p-4 hover:shadow-md transition-shadow">
         <p className="text-xs font-medium text-gray-600 mb-1">Backlog Value</p>
         <p className="text-2xl font-bold text-blue-700">${(stats.backlogValue / 1000).toFixed(1)}k</p>
