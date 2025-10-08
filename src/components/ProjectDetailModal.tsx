@@ -264,6 +264,7 @@ export default function ProjectDetailModal({ project, onClose, onUpdateProject }
   const [fieldSupervisor, setFieldSupervisor] = useState(project.fieldSupervisor || '');
   const [stageNotes, setStageNotes] = useState(project.currentStageNotes || '');
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+  const [sendingSlack, setSendingSlack] = useState(false);
 
   // Determine field supervisors based on region
   const fieldSupervisors = (() => {
@@ -349,6 +350,75 @@ export default function ProjectDetailModal({ project, onClose, onUpdateProject }
     window.open(calendarUrl, '_blank');
   };
 
+  // Send Slack notification with stage note
+  const handleSendSlackNotification = async () => {
+    if (!stageNotes.trim()) {
+      alert('Please enter a note before sending to Slack');
+      return;
+    }
+
+    setSendingSlack(true);
+    try {
+      const aspireDirectLink = project.opportunityId 
+        ? `https://cloud.youraspire.com/app/opportunities/details/${project.opportunityId}`
+        : null;
+
+      // Map branch name to Slack emoji
+      const getBranchEmoji = (branchName?: string): string | null => {
+        if (!branchName) return null;
+        const normalized = branchName.toLowerCase();
+        
+        if (normalized.includes('las vegas')) return ':fab_lv:';
+        if (normalized.includes('southwest') || normalized.includes('south west')) return ':sw:';
+        if (normalized.includes('southeast') || normalized.includes('south east')) return ':se:';
+        if (normalized.includes('north')) return ':n:';
+        if (normalized.includes('corporate') || normalized.includes('corp')) return ':corp:';
+        
+        return null;
+      };
+
+      const payload = {
+        event: 'stage_note_added',
+        stage: status.label,
+        stageName: project.status,
+        note: stageNotes,
+        projectNumber: project.aspireWoNumber || `ID-${project.id}`,
+        opportunityId: project.opportunityId,
+        aspireLink: aspireDirectLink,
+        propertyName: project.clientName,
+        oppName: project.oppName,
+        accountManager: project.accountManager,
+        specialist: project.specialist,
+        fieldSupervisor: fieldSupervisor || null,
+        value: project.value,
+        branchName: project.branchName,
+        branchEmoji: getBranchEmoji(project.branchName),
+        regionName: project.regionName,
+        sentBy: session?.user?.name || session?.user?.email || 'Unknown User',
+        sentByEmail: session?.user?.email || null,
+        sentAt: new Date().toISOString(),
+        projectUrl: `${window.location.origin}`
+      };
+
+      const response = await fetch('/api/zapier-webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send notification');
+      }
+
+      alert('✅ Slack notification sent!');
+    } catch (error) {
+      console.error('Slack notification error:', error);
+      alert('❌ Failed to send Slack notification');
+    } finally {
+      setSendingSlack(false);
+    }
+  };
+
   // Save current progress without advancing
   const handleSaveProgress = () => {
     const updatedChecklistData = {
@@ -430,7 +500,7 @@ export default function ProjectDetailModal({ project, onClose, onUpdateProject }
     if (!previousStatus) return;
     
     const confirmed = window.confirm(
-      `Move this project back to "${statusConfig[previousStatus].label}"?\n\nThis will reset the current stage\'s checklist but preserve historical data.`
+      `Move this project back to "${statusConfig[previousStatus].label}"?\n\nThis will reset the current stage's checklist but preserve historical data.`
     );
     
     if (!confirmed) return;
@@ -1225,9 +1295,28 @@ export default function ProjectDetailModal({ project, onClose, onUpdateProject }
                   placeholder={`Add notes for ${status.label}...`}
                   className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm"
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  {stageNotes.length} characters
-                </p>
+                <div className="flex items-center justify-between mt-1">
+                  <p className="text-xs text-gray-500">
+                    {stageNotes.length} characters
+                  </p>
+                  <button
+                    onClick={handleSendSlackNotification}
+                    disabled={sendingSlack || !stageNotes.trim()}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Send note to Slack via Zapier"
+                  >
+                    <Image
+                      src="/icons/slack.png"
+                      alt="Slack"
+                      width={16}
+                      height={16}
+                      className="object-contain"
+                    />
+                    <span className="text-xs font-medium text-gray-700">
+                      {sendingSlack ? 'Sending...' : 'Send to Slack'}
+                    </span>
+                  </button>
+                </div>
               </div>
 
               {/* Save Success Message */}
