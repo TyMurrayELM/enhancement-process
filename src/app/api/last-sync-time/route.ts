@@ -11,9 +11,9 @@ export async function GET() {
     // Query the aspire_sync_log table for the most recent successful sync
     const { data, error } = await supabase
       .from('aspire_sync_log')
-      .select('synced_at')
+      .select('sync_completed_at')
       .eq('status', 'success')
-      .order('synced_at', { ascending: false })
+      .order('sync_completed_at', { ascending: false })
       .limit(1)
       .single();
 
@@ -23,7 +23,7 @@ export async function GET() {
     }
 
     return NextResponse.json({ 
-      lastSyncTime: data?.synced_at || null 
+      lastSyncTime: data?.sync_completed_at || null 
     });
   } catch (error) {
     console.error('Failed to fetch last sync time:', error);
