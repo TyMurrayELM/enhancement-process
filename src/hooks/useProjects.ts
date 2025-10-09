@@ -167,7 +167,7 @@ export function useProjects() {
         .from('projects')
         .select('*')
         .neq('stage', 'proposal')
-        .order('aspire_wo_number', { ascending: true });
+        .order('won_date', { ascending: true, nullsFirst: false });
       
       if (fetchError) {
         console.error('Error fetching projects:', fetchError);

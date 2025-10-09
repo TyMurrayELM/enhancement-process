@@ -1,81 +1,37 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
-export async function POST(request: Request) {
+export async function GET() {
   try {
-    const webhookUrl = process.env.ZAPIER_WEBHOOK_URL;
-    
-    // Enhanced logging to debug the issue
-    console.log('Zapier webhook triggered');
-    console.log('Webhook URL exists:', !!webhookUrl);
-    console.log('Webhook URL (masked):', webhookUrl ? `${webhookUrl.substring(0, 30)}...` : 'undefined');
-    
-    if (!webhookUrl) {
-      console.error('ZAPIER_WEBHOOK_URL not configured in environment variables');
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_KEY! // Use service key for server-side
+    );
+
+    // Query the most recent successful sync from aspire_sync_log table (correct table name!)
+    const { data, error } = await supabase
+      .from('aspire_sync_log')
+      .select('sync_completed_at')
+      .in('status', ['success', 'success_with_errors']) // Only get successful syncs
+      .order('sync_completed_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      console.error('Error fetching last sync time:', error);
       return NextResponse.json(
-        { error: 'Webhook not configured - check environment variables' },
+        { error: 'Failed to fetch last sync time' },
         { status: 500 }
       );
     }
 
-    // Get the payload from the request
-    const payload = await request.json();
-    console.log('Payload received:', JSON.stringify(payload, null, 2));
-
-    // Send to Zapier with timeout
-    console.log('Sending request to Zapier...');
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-    try {
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      console.log('Zapier response status:', response.status);
-      console.log('Zapier response ok:', response.ok);
-
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => 'Unable to read error response');
-        console.error('Zapier webhook failed:', {
-          status: response.status,
-          statusText: response.statusText,
-          body: errorText,
-        });
-        throw new Error(`Zapier webhook failed with status ${response.status}: ${errorText}`);
-      }
-
-      const responseData = await response.text();
-      console.log('Zapier response:', responseData);
-
-      return NextResponse.json({ 
-        success: true,
-        message: 'Notification sent successfully'
-      });
-    } catch (fetchError) {
-      clearTimeout(timeoutId);
-      
-      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-        console.error('Zapier webhook timeout after 10 seconds');
-        throw new Error('Zapier webhook timeout - request took too long');
-      }
-      throw fetchError;
-    }
+    return NextResponse.json({
+      lastSyncTime: data?.sync_completed_at || null
+    });
   } catch (error) {
-    console.error('Zapier webhook error:', error);
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-    
+    console.error('Last sync time API error:', error);
     return NextResponse.json(
-      { 
-        error: error instanceof Error ? error.message : 'Failed to send notification',
-        details: error instanceof Error ? error.stack : undefined
-      },
+      { error: error instanceof Error ? error.message : 'Failed to fetch last sync time' },
       { status: 500 }
     );
   }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useProjects } from '@/hooks/useProjects';
@@ -28,22 +28,23 @@ export default function DashboardPage() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
 
+  // Reusable function to fetch last sync time from database
+  const fetchLastSyncTime = useCallback(async () => {
+    try {
+      const response = await fetch('/api/last-sync-time');
+      const data = await response.json();
+      if (data.lastSyncTime) {
+        setLastSyncTime(data.lastSyncTime);
+      }
+    } catch (error) {
+      console.error('Failed to fetch last sync time:', error);
+    }
+  }, []);
+
   // Fetch last sync time from database on mount
   useEffect(() => {
-    const fetchLastSyncTime = async () => {
-      try {
-        const response = await fetch('/api/last-sync-time');
-        const data = await response.json();
-        if (data.lastSyncTime) {
-          setLastSyncTime(data.lastSyncTime);
-        }
-      } catch (error) {
-        console.error('Failed to fetch last sync time:', error);
-      }
-    };
-    
     fetchLastSyncTime();
-  }, []);
+  }, [fetchLastSyncTime]);
   
   // Filter states
   const [filterStatus, setFilterStatus] = useState('all');
@@ -172,10 +173,8 @@ export default function DashboardPage() {
         setSyncedCount(result.synced || 0);
         setSyncMessage(`Successfully synced ${result.synced} opportunities`);
         
-        // Save sync timestamp
-        const now = new Date().toISOString();
-        localStorage.setItem('lastAspireSync', now);
-        setLastSyncTime(now);
+        // Fetch the updated sync timestamp from database
+        await fetchLastSyncTime();
         
         setTimeout(() => {
           setSyncing(false);
