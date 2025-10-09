@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Project, getAspireLink, MaterialsStatus } from '@/lib/types';
 import { statusConfig } from '@/lib/statusConfig';
 import { materialsConfig } from '@/lib/materialsConfig';
-import { CheckCircle, ExternalLink, Play, FileText, Check } from 'lucide-react';
+import { CheckCircle, ExternalLink, Play, FileText, Check, ChevronUp, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import NotesModal from './NotesModal';
 
@@ -11,6 +11,9 @@ interface ProjectTableProps {
   onViewDetails: (project: Project) => void;
   onUpdateProject: (project: Project) => void;
 }
+
+type SortColumn = 'scheduledDate' | 'wonDate' | null;
+type SortDirection = 'asc' | 'desc';
 
 // Map branch names to icon filenames
 function getBranchIcon(branchName?: string): string | null {
@@ -46,9 +49,30 @@ function isWonToday(wonDate?: string | null): boolean {
   return todayAZ === wonDateOnly;
 }
 
+// Calculate days aged from won date to current date (Arizona time)
+function calculateDaysAged(wonDate?: string | null): number | null {
+  if (!wonDate) return null;
+  
+  // Get current date in Arizona timezone
+  const now = new Date();
+  const arizonaDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/Phoenix' }));
+  
+  // Convert won date to Arizona time
+  const wonDateObj = new Date(wonDate);
+  const wonDateAZ = new Date(wonDateObj.toLocaleString('en-US', { timeZone: 'America/Phoenix' }));
+  
+  // Calculate difference in milliseconds and convert to days
+  const diffInMs = arizonaDate.getTime() - wonDateAZ.getTime();
+  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+  
+  return diffInDays;
+}
+
 export default function ProjectTable({ projects, onViewDetails, onUpdateProject }: ProjectTableProps) {
   const [notesProject, setNotesProject] = useState<Project | null>(null);
   const [materialsDropdownOpen, setMaterialsDropdownOpen] = useState<number | null>(null);
+  const [sortColumn, setSortColumn] = useState<SortColumn>('wonDate');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
   const handleSaveNotes = async (updatedProject: Project) => {
     onUpdateProject(updatedProject);
@@ -60,6 +84,59 @@ export default function ProjectTable({ projects, onViewDetails, onUpdateProject 
       materialsStatus: newStatus as MaterialsStatus
     });
     setMaterialsDropdownOpen(null);
+  };
+
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      // Toggle direction if clicking same column
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new column with ascending direction
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  // Sort projects based on selected column and direction
+  const sortedProjects = useMemo(() => {
+    if (!sortColumn) return projects;
+
+    return [...projects].sort((a, b) => {
+      let aValue: string | null | undefined;
+      let bValue: string | null | undefined;
+
+      if (sortColumn === 'scheduledDate') {
+        aValue = a.scheduledDate;
+        bValue = b.scheduledDate;
+      } else if (sortColumn === 'wonDate') {
+        aValue = a.wonDate;
+        bValue = b.wonDate;
+      }
+
+      // Handle null/undefined values - put them at the end
+      if (!aValue && !bValue) return 0;
+      if (!aValue) return 1;
+      if (!bValue) return -1;
+
+      // Compare dates
+      const dateA = new Date(aValue).getTime();
+      const dateB = new Date(bValue).getTime();
+
+      if (sortDirection === 'asc') {
+        return dateA - dateB;
+      } else {
+        return dateB - dateA;
+      }
+    });
+  }, [projects, sortColumn, sortDirection]);
+
+  const SortIcon = ({ column }: { column: SortColumn }) => {
+    if (sortColumn !== column) return null;
+    return sortDirection === 'asc' ? (
+      <ChevronUp size={14} className="inline ml-1" />
+    ) : (
+      <ChevronDown size={14} className="inline ml-1" />
+    );
   };
 
   return (
@@ -90,11 +167,21 @@ export default function ProjectTable({ projects, onViewDetails, onUpdateProject 
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 Enh Specialist
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th 
+                className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none"
+                onClick={() => handleSort('scheduledDate')}
+                title="Click to sort"
+              >
                 Sched Date
+                <SortIcon column="scheduledDate" />
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th 
+                className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none"
+                onClick={() => handleSort('wonDate')}
+                title="Click to sort"
+              >
                 Won Date
+                <SortIcon column="wonDate" />
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 Progress
@@ -105,7 +192,7 @@ export default function ProjectTable({ projects, onViewDetails, onUpdateProject 
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {projects.map((project) => {
+            {sortedProjects.map((project) => {
               const status = statusConfig[project.status];
               const materialsStatus = materialsConfig[project.materialsStatus || 'need_to_order'];
               const MaterialsIcon = materialsStatus.icon;
@@ -132,9 +219,16 @@ export default function ProjectTable({ projects, onViewDetails, onUpdateProject 
               const hasAnyNotes = notesCount > 0;
               
               let hoursColor = 'bg-gray-100 text-gray-600';
-              if (hasCompletedDate) {
+              if (hasCompletedDate && hasActualHours && hasEstimatedHours) {
+                // Completed: Red if over estimate, green if under/equal
+                hoursColor = (project.actualLaborHours ?? 0) > (project.estimatedLaborHours ?? 0)
+                  ? 'bg-red-100 text-red-700'
+                  : 'bg-green-100 text-green-700';
+              } else if (hasCompletedDate) {
+                // Completed but no hours comparison available
                 hoursColor = 'bg-green-50 text-green-800';
               } else if (hasActualHours && hasEstimatedHours) {
+                // In progress: Red if over estimate, green if under/equal
                 hoursColor = (project.actualLaborHours ?? 0) > (project.estimatedLaborHours ?? 0)
                   ? 'bg-red-100 text-red-700'
                   : 'bg-green-100 text-green-700';
@@ -304,10 +398,25 @@ export default function ProjectTable({ projects, onViewDetails, onUpdateProject 
                   
                   <td className="px-4 py-3 text-sm text-gray-700 w-24">
                     {project.wonDate ? (
-                      new Date(project.wonDate).toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric'
-                      })
+                      <div className="flex flex-col gap-0.5">
+                        <span>
+                          {new Date(project.wonDate).toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric'
+                          })}
+                        </span>
+                        {(() => {
+                          const daysAged = calculateDaysAged(project.wonDate);
+                          if (daysAged !== null) {
+                            return (
+                              <span className="text-xs text-gray-500">
+                                {daysAged} {daysAged === 1 ? 'day' : 'days'} aged
+                              </span>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
                     ) : (
                       <span className="text-gray-400">-</span>
                     )}
