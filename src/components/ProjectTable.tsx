@@ -141,10 +141,10 @@ export default function ProjectTable({ projects, onViewDetails, onUpdateProject 
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <div className="overflow-x-auto">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="overflow-x-auto max-h-[calc(100vh-300px)] overflow-y-auto">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className="bg-blue-50 border-b border-blue-200 sticky top-0 z-10">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 WO#
@@ -168,7 +168,7 @@ export default function ProjectTable({ projects, onViewDetails, onUpdateProject 
                 Enh Specialist
               </th>
               <th 
-                className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none"
+                className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-blue-100 transition-colors select-none"
                 onClick={() => handleSort('scheduledDate')}
                 title="Click to sort"
               >
@@ -176,7 +176,7 @@ export default function ProjectTable({ projects, onViewDetails, onUpdateProject 
                 <SortIcon column="scheduledDate" />
               </th>
               <th 
-                className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none"
+                className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-blue-100 transition-colors select-none"
                 onClick={() => handleSort('wonDate')}
                 title="Click to sort"
               >
