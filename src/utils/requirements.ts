@@ -35,6 +35,7 @@ export const getStageRequirements = (status: string, project: Project): Checklis
         { id: 'staked', label: 'Trees double-staked, wired, nursery stakes removed', required: true },
         { id: 'irrigation', label: 'Irrigation working, timers set, drip lines installed', required: true },
         { id: 'riprap', label: 'Riprap and granite evenly installed', required: true },
+        { id: 'mulch', label: 'Mulch/compost/DG evenly spread', required: true },
         { id: 'washed', label: 'Parking lots, sidewalks washed', required: true },
         { id: 'photos', label: 'Before/During/Completed photos sent to Client Specialist', required: true },
         { id: 'aspireReview', label: 'Hours and materials reviewed in Aspire', required: true },
@@ -47,7 +48,8 @@ export const getStageRequirements = (status: string, project: Project): Checklis
         { id: 'clientNotifiedIssues', label: 'Enhancements Specialist and Client Specialist to notify client of any issues (if applicable)', required: true },
         { id: 'month1Visit', label: 'Month 1 follow-up visit completed', required: true },
         { id: 'month2Visit', label: 'Month 2 follow-up visit completed', required: true },
-        { id: 'month3Visit', label: 'Month 3 follow-up visit completed (90-day monitoring complete)', required: true }
+        { id: 'month3Visit', label: 'Month 3 follow-up visit completed (90-day monitoring complete)', required: true },
+        { id: 'allWarrantyItemsCompleted', label: 'All warranty items completed', required: true }
       ];
     case 'fully_complete':
       return [];
