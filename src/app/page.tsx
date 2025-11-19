@@ -148,6 +148,11 @@ export default function DashboardPage() {
     });
   };
 
+  // Handle clicking on stage cards to filter
+  const handleStageClick = (stage: string) => {
+    setFilterStatus(stage);
+  };
+
   const handleSync = async () => {
     setSyncing(true);
     setSyncStatus('syncing');
@@ -254,33 +259,26 @@ export default function DashboardPage() {
                       className="rounded-full"
                     />
                   ) : (
-                    <User className="text-gray-600" size={20} />
+                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                      <User size={16} className="text-white" />
+                    </div>
                   )}
                   <span className="text-sm font-medium text-gray-700">
                     {session.user?.name || session.user?.email}
                   </span>
                 </button>
 
+                {/* Dropdown Menu */}
                 {showUserMenu && (
-                  <>
-                    <div 
-                      className="fixed inset-0 z-10"
-                      onClick={() => setShowUserMenu(false)}
-                    />
-                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
-                      <div className="px-4 py-2 border-b border-gray-200">
-                        <p className="text-sm font-medium text-gray-900">{session.user?.name}</p>
-                        <p className="text-xs text-gray-500 truncate">{session.user?.email}</p>
-                      </div>
-                      <button
-                        onClick={() => signOut({ callbackUrl: '/auth/signin' })}
-                        className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                      >
-                        <LogOut size={16} />
-                        Sign Out
-                      </button>
-                    </div>
-                  </>
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                    <button
+                      onClick={() => signOut({ callbackUrl: '/auth/signin' })}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                    >
+                      <LogOut size={16} />
+                      Sign Out
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -291,7 +289,10 @@ export default function DashboardPage() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-6">
         {/* Stats - Uses demographic filters only, shows ALL stages */}
-        <StatsBar projects={demographicFilteredProjects} />
+        <StatsBar 
+          projects={demographicFilteredProjects}
+          onStageClick={handleStageClick}
+        />
 
         {/* Filters */}
         <FilterButtons
