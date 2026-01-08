@@ -205,7 +205,8 @@ function createWarrantyCalendarUrl(project: Project, visitType: string, daysAfte
       'Jose Zacarias': 'jose.zacarias@encorelm.com',
       'Martin Perez': 'martin.perez@encorelm.com',
       'Ron Pickard': 'ron.pickard@encorelm.com',
-      'Adrian Garcia': 'adrian.garcia@encorelm.com'
+      'Adrian Garcia': 'adrian.garcia@encorelm.com',
+      'Keylon Ross Sr': 'keylon.ross@encorelm.com@encorelm.com',
     };
     const supervisorEmail = supervisorEmails[project.fieldSupervisor];
     if (supervisorEmail && !defaultAttendees.includes(supervisorEmail)) {
@@ -272,7 +273,7 @@ export default function ProjectDetailModal({ project, onClose, onUpdateProject }
     if (region.includes('las vegas') || region.includes('vegas')) {
       return ['Adrian Garcia'];
     } else {
-      return ['Jose Zacarias', 'Martin Perez', 'Ron Pickard'];
+      return ['Martin Perez', 'Keylon Ross Sr'];
     }
   })();
 
