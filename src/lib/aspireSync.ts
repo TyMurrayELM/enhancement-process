@@ -56,6 +56,7 @@ async function callAspireAPI(endpoint: string, orderByField?: string, pageNumber
   
   const response = await fetch(url, {
     method: 'GET',
+    signal: AbortSignal.timeout(30000),
   });
   
   console.log(`[API CALL] Response status: ${response.status}`);
@@ -303,12 +304,14 @@ export async function syncAspireOpportunities(supabase: SupabaseClient, testLimi
           estimated_material_cost: opp.EstimatedMaterialCost || null,
           actual_cost_material: opp.ActualCostMaterial || null,
           estimator_notes: opp.EstimatorNotes || null,
-          notes: (existing?.notes as string) || opp.EstimatorNotes || null,
-          notes_by: (existing?.notes_by as string) || null,
-          notes_date: (existing?.notes_date as string) || null,
-          current_stage_notes: (existing?.current_stage_notes as string) || null,
-          current_stage_notes_by: (existing?.current_stage_notes_by as string) || null,
-          current_stage_notes_date: (existing?.current_stage_notes_date as string) || null,
+          notes: existing
+            ? ((existing.notes as string | null) ?? null)
+            : (opp.EstimatorNotes ?? null),
+          notes_by: (existing?.notes_by as string | null) ?? null,
+          notes_date: (existing?.notes_date as string | null) ?? null,
+          current_stage_notes: (existing?.current_stage_notes as string | null) ?? null,
+          current_stage_notes_by: (existing?.current_stage_notes_by as string | null) ?? null,
+          current_stage_notes_date: (existing?.current_stage_notes_date as string | null) ?? null,
           created_date: opp.CreatedDateTime || new Date().toISOString(),
           scheduled_date: opp.StartDate || null,
           won_date: opp.WonDate || null,

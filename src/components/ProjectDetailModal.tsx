@@ -67,24 +67,35 @@ function nameToEmail(fullName: string): string {
   return `${firstName}.${lastName}@encorelm.com`;
 }
 
-// Helper to format date for Google Calendar (YYYYMMDDTHHMMSS)
-function formatGoogleCalendarDate(date: Date): string {
-  const pad = (num: number) => num.toString().padStart(2, '0');
-  return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}T${pad(date.getHours())}${pad(date.getMinutes())}00`;
+// Format YYYY-MM-DD + hour into Google Calendar's floating timestamp (interpreted
+// per the URL's ctz param, so no browser-TZ math).
+function formatCalendarDateTime(yyyyMmDd: string, hour: number, minute = 0): string {
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  const [y, m, d] = yyyyMmDd.split('-');
+  return `${y}${m}${d}T${pad(hour)}${pad(minute)}00`;
+}
+
+// Add N days to a YYYY-MM-DD using UTC math so DST never shifts the day.
+function addDaysToDateString(yyyyMmDd: string, days: number): string {
+  const d = new Date(`${yyyyMmDd}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+// Phoenix doesn't observe DST; Vegas does. Mapping by region keeps the calendar
+// event anchored to the property's local time regardless of the user's browser TZ.
+function getRegionTimezone(regionName?: string): string {
+  const region = regionName?.toLowerCase() || '';
+  if (region.includes('vegas')) return 'America/Los_Angeles';
+  return 'America/Phoenix';
 }
 
 // Helper to create Google Calendar URL for initial meeting
 function createGoogleCalendarUrl(project: Project, meetingDate: string): string {
-  const date = new Date(meetingDate);
-  // Set to 9 AM local time
-  date.setHours(9, 0, 0, 0);
-  
-  // End time is 1 hour later
-  const endDate = new Date(date);
-  endDate.setHours(10, 0, 0, 0);
-  
-  const startDateStr = formatGoogleCalendarDate(date);
-  const endDateStr = formatGoogleCalendarDate(endDate);
+  const dateOnly = meetingDate.slice(0, 10);
+  const startDateStr = formatCalendarDateTime(dateOnly, 9);
+  const endDateStr = formatCalendarDateTime(dateOnly, 10);
+  const tz = getRegionTimezone(project.regionName);
   
   const titleParts = ['Initial Site Meeting', project.clientName];
   if (project.oppName) {
@@ -127,27 +138,18 @@ function createGoogleCalendarUrl(project: Project, meetingDate: string): string 
   }
 
   const attendees = encodeURIComponent(defaultAttendees.join(','));
-  
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDateStr}/${endDateStr}&details=${details}&location=${location}&add=${attendees}`;
+
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDateStr}/${endDateStr}&details=${details}&location=${location}&add=${attendees}&ctz=${encodeURIComponent(tz)}`;
 }
 
 // Helper to create Google Calendar URL for warranty visits
 function createWarrantyCalendarUrl(project: Project, visitType: string, daysAfterCompletion: number): string {
   if (!project.completedDate) return '';
-  
-  const completedDate = new Date(project.completedDate);
-  const visitDate = new Date(completedDate);
-  visitDate.setDate(visitDate.getDate() + daysAfterCompletion);
-  
-  // Set to 9 AM local time
-  visitDate.setHours(9, 0, 0, 0);
-  
-  // End time is 1 hour later
-  const endDate = new Date(visitDate);
-  endDate.setHours(10, 0, 0, 0);
-  
-  const startDateStr = formatGoogleCalendarDate(visitDate);
-  const endDateStr = formatGoogleCalendarDate(endDate);
+
+  const visitDateStr = addDaysToDateString(project.completedDate.slice(0, 10), daysAfterCompletion);
+  const startDateStr = formatCalendarDateTime(visitDateStr, 9);
+  const endDateStr = formatCalendarDateTime(visitDateStr, 10);
+  const tz = getRegionTimezone(project.regionName);
   
   const visitLabels: { [key: string]: string } = {
     weekOne: '1-Week Follow-up',
@@ -224,8 +226,8 @@ function createWarrantyCalendarUrl(project: Project, visitType: string, daysAfte
   }
   
   const attendees = encodeURIComponent(defaultAttendees.join(','));
-  
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDateStr}/${endDateStr}&details=${details}&location=${location}&add=${attendees}`;
+
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDateStr}/${endDateStr}&details=${details}&location=${location}&add=${attendees}&ctz=${encodeURIComponent(tz)}`;
 }
 
 export default function ProjectDetailModal({ project, onClose, onUpdateProject }: ProjectDetailModalProps) {
@@ -462,17 +464,20 @@ export default function ProjectDetailModal({ project, onClose, onUpdateProject }
       const currentUser = session?.user?.name || 'Unknown User';
       const currentDate = new Date().toISOString();
 
-      const stageHistory = project.stageHistory || [];
-      if (project.status !== 'fully_complete') {
-        stageHistory.push({
-          stage: project.status,
-          completedDate: new Date().toISOString(),
-          notes: stageNotes || undefined,
-          notesBy: stageNotes ? currentUser : undefined,
-          notesDate: stageNotes ? currentDate : undefined,
-          checklistData: checklist
-        });
-      }
+      const stageHistory =
+        project.status !== 'fully_complete'
+          ? [
+              ...(project.stageHistory || []),
+              {
+                stage: project.status,
+                completedDate: new Date().toISOString(),
+                notes: stageNotes || undefined,
+                notesBy: stageNotes ? currentUser : undefined,
+                notesDate: stageNotes ? currentDate : undefined,
+                checklistData: checklist,
+              },
+            ]
+          : project.stageHistory || [];
 
       onUpdateProject({
         ...project,

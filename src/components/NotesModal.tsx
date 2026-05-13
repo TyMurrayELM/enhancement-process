@@ -10,13 +10,17 @@ import Image from 'next/image';
 interface NotesModalProps {
   project: Project;
   onClose: () => void;
-  onSave: (project: Project, notes: string) => void;
+  onSave: (project: Project) => void;
 }
 
 export default function NotesModal({ project, onClose, onSave }: NotesModalProps) {
   const { data: session } = useSession();
   const [notes, setNotes] = useState(project.notes || '');
+  const [notesBy, setNotesBy] = useState(project.notesBy);
+  const [notesDate, setNotesDate] = useState(project.notesDate);
   const [currentStageNotes, setCurrentStageNotes] = useState(project.currentStageNotes || '');
+  const [currentStageNotesBy, setCurrentStageNotesBy] = useState(project.currentStageNotesBy);
+  const [currentStageNotesDate, setCurrentStageNotesDate] = useState(project.currentStageNotesDate);
   const [stageHistory, setStageHistory] = useState(project.stageHistory || []);
   const [editingStageIndex, setEditingStageIndex] = useState<number | null>(null);
   const [editingStageNoteText, setEditingStageNoteText] = useState('');
@@ -33,19 +37,20 @@ export default function NotesModal({ project, onClose, onSave }: NotesModalProps
     try {
       const currentUser = session?.user?.name || 'Current User';
       const currentDate = new Date().toISOString();
-      
+      const trimmed = currentStageNotes.trim();
+      const nextBy = trimmed ? currentUser : undefined;
+      const nextDate = trimmed ? currentDate : undefined;
+
       const updatedProject = {
         ...project,
         currentStageNotes,
-        currentStageNotesBy: currentStageNotes.trim() ? currentUser : undefined,
-        currentStageNotesDate: currentStageNotes.trim() ? currentDate : undefined,
+        currentStageNotesBy: nextBy,
+        currentStageNotesDate: nextDate,
       };
-      
-      await onSave(updatedProject, project.notes || '');
-      // Update local state to reflect saved changes
-      project.currentStageNotes = currentStageNotes;
-      project.currentStageNotesBy = currentStageNotes.trim() ? currentUser : undefined;
-      project.currentStageNotesDate = currentStageNotes.trim() ? currentDate : undefined;
+
+      await onSave(updatedProject);
+      setCurrentStageNotesBy(nextBy);
+      setCurrentStageNotesDate(nextDate);
       setIsEditingCurrentStage(false);
     } catch (error) {
       console.error('Failed to save stage notes:', error);
@@ -60,19 +65,20 @@ export default function NotesModal({ project, onClose, onSave }: NotesModalProps
     try {
       const currentUser = session?.user?.name || 'Current User';
       const currentDate = new Date().toISOString();
-      
+      const trimmed = notes.trim();
+      const nextBy = trimmed ? currentUser : undefined;
+      const nextDate = trimmed ? currentDate : undefined;
+
       const updatedProject = {
         ...project,
         notes,
-        notesBy: notes.trim() ? currentUser : undefined,
-        notesDate: notes.trim() ? currentDate : undefined,
+        notesBy: nextBy,
+        notesDate: nextDate,
       };
-      
-      await onSave(updatedProject, notes);
-      // Update local state to reflect saved changes
-      project.notes = notes;
-      project.notesBy = notes.trim() ? currentUser : undefined;
-      project.notesDate = notes.trim() ? currentDate : undefined;
+
+      await onSave(updatedProject);
+      setNotesBy(nextBy);
+      setNotesDate(nextDate);
       setIsEditingGeneral(false);
     } catch (error) {
       console.error('Failed to save general notes:', error);
@@ -108,7 +114,7 @@ export default function NotesModal({ project, onClose, onSave }: NotesModalProps
         stageHistory: updatedStageHistory,
       };
       
-      await onSave(updatedProject, project.notes || '');
+      await onSave(updatedProject);
       setStageHistory(updatedStageHistory);
       setEditingStageIndex(null);
     }
@@ -531,9 +537,9 @@ export default function NotesModal({ project, onClose, onSave }: NotesModalProps
                         <p className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-100 p-3 rounded-lg border border-gray-300">
                           {currentStageNotes}
                         </p>
-                        {project.currentStageNotesBy && (
+                        {currentStageNotesBy && (
                           <p className="text-xs text-gray-500 mt-2">
-                            by {project.currentStageNotesBy} {project.currentStageNotesDate && `• ${formatDate(project.currentStageNotesDate)}`}
+                            by {currentStageNotesBy} {currentStageNotesDate && `• ${formatDate(currentStageNotesDate)}`}
                           </p>
                         )}
                         <div className="mt-3">
@@ -622,9 +628,9 @@ export default function NotesModal({ project, onClose, onSave }: NotesModalProps
                     <p className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-100 p-4 rounded-lg border border-gray-300">
                       {notes}
                     </p>
-                    {project.notesBy && (
+                    {notesBy && (
                       <p className="text-xs text-gray-500 mt-2">
-                        by {project.notesBy} {project.notesDate && `• ${formatDate(project.notesDate)}`}
+                        by {notesBy} {notesDate && `• ${formatDate(notesDate)}`}
                       </p>
                     )}
                     <div className="mt-3">
