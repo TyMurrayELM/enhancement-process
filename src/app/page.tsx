@@ -56,35 +56,50 @@ export default function DashboardPage() {
 
   const activeProjects = projects.filter(p => p.status !== 'proposal');
 
-  // Extract unique values for filter dropdowns
-  const filterOptions = useMemo(() => {
-    const regions = [...new Set(activeProjects.map(p => p.regionName).filter(Boolean))].sort() as string[];
-    const branches = [...new Set(activeProjects.map(p => p.branchName).filter(Boolean))].sort() as string[];
-    const clientSpecialists = [...new Set(activeProjects.map(p => p.accountManager).filter(Boolean))].sort() as string[];
-    const enhSpecialists = [...new Set(activeProjects.map(p => p.specialist).filter(Boolean))].sort() as string[];
-    const fieldSupervisors = [...new Set(activeProjects.map(p => p.fieldSupervisor).filter(Boolean))].sort() as string[];
+  // Build a deduped, trimmed, case-insensitive list, keeping the first canonical form seen.
+  const uniqueTrimmed = (values: (string | undefined | null)[]): string[] => {
+    const seen = new Map<string, string>();
+    for (const raw of values) {
+      if (!raw) continue;
+      const trimmed = raw.trim();
+      if (!trimmed) continue;
+      const key = trimmed.toLowerCase();
+      if (!seen.has(key)) seen.set(key, trimmed);
+    }
+    return [...seen.values()].sort();
+  };
 
-    return { regions, branches, clientSpecialists, enhSpecialists, fieldSupervisors };
-  }, [activeProjects]);
+  // Extract unique values for filter dropdowns
+  const filterOptions = useMemo(() => ({
+    regions: uniqueTrimmed(activeProjects.map(p => p.regionName)),
+    branches: uniqueTrimmed(activeProjects.map(p => p.branchName)),
+    clientSpecialists: uniqueTrimmed(activeProjects.map(p => p.accountManager)),
+    enhSpecialists: uniqueTrimmed(activeProjects.map(p => p.specialist)),
+    fieldSupervisors: uniqueTrimmed(activeProjects.map(p => p.fieldSupervisor)),
+  }), [activeProjects]);
+
+  // Case-insensitive, whitespace-tolerant match for filter equality.
+  const matches = (a?: string | null, b?: string | null) =>
+    (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase();
 
   // DEMOGRAPHIC FILTERS: Used for Stats Bar - shows ALL stages (including proposal)
   const demographicFilteredProjects = useMemo(() => {
     let filtered = projects;
 
     if (filterRegion !== 'all') {
-      filtered = filtered.filter(p => p.regionName === filterRegion);
+      filtered = filtered.filter(p => matches(p.regionName, filterRegion));
     }
     if (filterBranch !== 'all') {
-      filtered = filtered.filter(p => p.branchName === filterBranch);
+      filtered = filtered.filter(p => matches(p.branchName, filterBranch));
     }
     if (filterClientSpecialist !== 'all') {
-      filtered = filtered.filter(p => p.accountManager === filterClientSpecialist);
+      filtered = filtered.filter(p => matches(p.accountManager, filterClientSpecialist));
     }
     if (filterEnhSpecialist !== 'all') {
-      filtered = filtered.filter(p => p.specialist === filterEnhSpecialist);
+      filtered = filtered.filter(p => matches(p.specialist, filterEnhSpecialist));
     }
     if (filterFieldSupervisor !== 'all') {
-      filtered = filtered.filter(p => p.fieldSupervisor === filterFieldSupervisor);
+      filtered = filtered.filter(p => matches(p.fieldSupervisor, filterFieldSupervisor));
     }
 
     return filtered;
@@ -98,19 +113,19 @@ export default function DashboardPage() {
       filtered = filtered.filter(p => p.status === filterStatus);
     }
     if (filterRegion !== 'all') {
-      filtered = filtered.filter(p => p.regionName === filterRegion);
+      filtered = filtered.filter(p => matches(p.regionName, filterRegion));
     }
     if (filterBranch !== 'all') {
-      filtered = filtered.filter(p => p.branchName === filterBranch);
+      filtered = filtered.filter(p => matches(p.branchName, filterBranch));
     }
     if (filterClientSpecialist !== 'all') {
-      filtered = filtered.filter(p => p.accountManager === filterClientSpecialist);
+      filtered = filtered.filter(p => matches(p.accountManager, filterClientSpecialist));
     }
     if (filterEnhSpecialist !== 'all') {
-      filtered = filtered.filter(p => p.specialist === filterEnhSpecialist);
+      filtered = filtered.filter(p => matches(p.specialist, filterEnhSpecialist));
     }
     if (filterFieldSupervisor !== 'all') {
-      filtered = filtered.filter(p => p.fieldSupervisor === filterFieldSupervisor);
+      filtered = filtered.filter(p => matches(p.fieldSupervisor, filterFieldSupervisor));
     }
 
     return filtered;
