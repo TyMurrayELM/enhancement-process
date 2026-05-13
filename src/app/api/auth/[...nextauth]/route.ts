@@ -10,6 +10,10 @@ const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    async signIn({ profile }) {
+      const email = profile?.email?.toLowerCase();
+      return !!email && email.endsWith('@encorelm.com');
+    },
     async session({ session, token }) {
       if (session.user) {
         session.user.email = token.email;
@@ -21,6 +25,7 @@ const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: '/auth/signin',
+    error: '/auth/signin',
   },
 };
 

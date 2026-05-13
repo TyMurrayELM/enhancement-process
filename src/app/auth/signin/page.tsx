@@ -1,9 +1,14 @@
 'use client';
 
+import { Suspense } from 'react';
 import { signIn } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 
-export default function SignInPage() {
+function SignInContent() {
+  const searchParams = useSearchParams();
+  const error = searchParams.get('error');
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
@@ -24,6 +29,12 @@ export default function SignInPage() {
             Sign in to access the workflow management system
           </p>
         </div>
+
+        {error === 'AccessDenied' && (
+          <div className="mb-6 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800">
+            Access is restricted to <span className="font-medium">@encorelm.com</span> Google accounts. Please sign in with your company email.
+          </div>
+        )}
 
         <button
           onClick={() => signIn('google', { callbackUrl: '/' })}
@@ -57,5 +68,13 @@ export default function SignInPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignInContent />
+    </Suspense>
   );
 }
