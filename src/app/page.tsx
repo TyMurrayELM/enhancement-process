@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { Suspense, useState, useMemo, useEffect, useCallback } from 'react';
 import { useSession, signOut } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useProjects } from '@/hooks/useProjects';
 import { Project } from '@/lib/types';
 import ProjectTable from '@/components/ProjectTable';
@@ -13,9 +13,26 @@ import SyncProgressModal from '@/components/SyncProgressModal';
 import Image from 'next/image';
 import { LogOut, User } from 'lucide-react';
 
-export default function DashboardPage() {
+// Short URL-param keys for filter state so shareable links stay readable.
+const PARAM_KEYS = {
+  status: 's',
+  region: 'r',
+  branch: 'b',
+  clientSpecialist: 'cs',
+  enhSpecialist: 'es',
+  fieldSupervisor: 'fs',
+  search: 'q',
+  mine: 'mine',
+} as const;
+
+function normalize(s?: string | null): string {
+  return (s ?? '').trim().toLowerCase();
+}
+
+function DashboardContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { projects, updateProject, refetch } = useProjects();
   
   // ALL STATE HOOKS MUST BE DECLARED AT THE TOP - BEFORE ANY CONDITIONAL RETURNS
@@ -46,13 +63,44 @@ export default function DashboardPage() {
     fetchLastSyncTime();
   }, [fetchLastSyncTime]);
   
-  // Filter states
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterRegion, setFilterRegion] = useState('all');
-  const [filterBranch, setFilterBranch] = useState('all');
-  const [filterClientSpecialist, setFilterClientSpecialist] = useState('all');
-  const [filterEnhSpecialist, setFilterEnhSpecialist] = useState('all');
-  const [filterFieldSupervisor, setFilterFieldSupervisor] = useState('all');
+  // Filter states — initial values come from URL querystring so filter selections are shareable.
+  const [filterStatus, setFilterStatus] = useState(() => searchParams.get(PARAM_KEYS.status) || 'all');
+  const [filterRegion, setFilterRegion] = useState(() => searchParams.get(PARAM_KEYS.region) || 'all');
+  const [filterBranch, setFilterBranch] = useState(() => searchParams.get(PARAM_KEYS.branch) || 'all');
+  const [filterClientSpecialist, setFilterClientSpecialist] = useState(() => searchParams.get(PARAM_KEYS.clientSpecialist) || 'all');
+  const [filterEnhSpecialist, setFilterEnhSpecialist] = useState(() => searchParams.get(PARAM_KEYS.enhSpecialist) || 'all');
+  const [filterFieldSupervisor, setFilterFieldSupervisor] = useState(() => searchParams.get(PARAM_KEYS.fieldSupervisor) || 'all');
+  const [filterSearch, setFilterSearch] = useState(() => searchParams.get(PARAM_KEYS.search) || '');
+  const [filterMine, setFilterMine] = useState(() => searchParams.get(PARAM_KEYS.mine) === '1');
+
+  // Mirror filter state into the URL so reload, back, and bookmarks all reproduce the same view.
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (filterStatus !== 'all') params.set(PARAM_KEYS.status, filterStatus);
+    if (filterRegion !== 'all') params.set(PARAM_KEYS.region, filterRegion);
+    if (filterBranch !== 'all') params.set(PARAM_KEYS.branch, filterBranch);
+    if (filterClientSpecialist !== 'all') params.set(PARAM_KEYS.clientSpecialist, filterClientSpecialist);
+    if (filterEnhSpecialist !== 'all') params.set(PARAM_KEYS.enhSpecialist, filterEnhSpecialist);
+    if (filterFieldSupervisor !== 'all') params.set(PARAM_KEYS.fieldSupervisor, filterFieldSupervisor);
+    if (filterSearch.trim()) params.set(PARAM_KEYS.search, filterSearch.trim());
+    if (filterMine) params.set(PARAM_KEYS.mine, '1');
+    const qs = params.toString();
+    router.replace(qs ? `/?${qs}` : '/', { scroll: false });
+  }, [router, filterStatus, filterRegion, filterBranch, filterClientSpecialist, filterEnhSpecialist, filterFieldSupervisor, filterSearch, filterMine]);
+
+  const sessionUserName = session?.user?.name;
+  const isAssignedToMe = useCallback(
+    (project: Project): boolean => {
+      const me = normalize(sessionUserName);
+      if (!me) return false;
+      return (
+        normalize(project.accountManager) === me ||
+        normalize(project.specialist) === me ||
+        normalize(project.fieldSupervisor) === me
+      );
+    },
+    [sessionUserName],
+  );
 
   const activeProjects = projects.filter(p => p.status !== 'proposal');
 
@@ -79,8 +127,18 @@ export default function DashboardPage() {
   }), [activeProjects]);
 
   // Case-insensitive, whitespace-tolerant match for filter equality.
-  const matches = (a?: string | null, b?: string | null) =>
-    (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase();
+  const matches = (a?: string | null, b?: string | null) => normalize(a) === normalize(b);
+
+  // Search by WO#, property, or opp name.
+  const matchesSearch = (p: Project, query: string): boolean => {
+    if (!query) return true;
+    const q = query.toLowerCase();
+    return (
+      (p.aspireWoNumber ?? '').toLowerCase().includes(q) ||
+      p.clientName.toLowerCase().includes(q) ||
+      (p.oppName ?? '').toLowerCase().includes(q)
+    );
+  };
 
   // DEMOGRAPHIC FILTERS: Used for Stats Bar - shows ALL stages (including proposal)
   const demographicFilteredProjects = useMemo(() => {
@@ -101,9 +159,15 @@ export default function DashboardPage() {
     if (filterFieldSupervisor !== 'all') {
       filtered = filtered.filter(p => matches(p.fieldSupervisor, filterFieldSupervisor));
     }
+    if (filterMine) {
+      filtered = filtered.filter(isAssignedToMe);
+    }
+    if (filterSearch.trim()) {
+      filtered = filtered.filter(p => matchesSearch(p, filterSearch.trim()));
+    }
 
     return filtered;
-  }, [projects, filterRegion, filterBranch, filterClientSpecialist, filterEnhSpecialist, filterFieldSupervisor]);
+  }, [projects, filterRegion, filterBranch, filterClientSpecialist, filterEnhSpecialist, filterFieldSupervisor, filterMine, filterSearch, isAssignedToMe]);
 
   // TABLE FILTERS: Used for Project Table - filters by status AND demographics
   const tableFilteredProjects = useMemo(() => {
@@ -127,9 +191,36 @@ export default function DashboardPage() {
     if (filterFieldSupervisor !== 'all') {
       filtered = filtered.filter(p => matches(p.fieldSupervisor, filterFieldSupervisor));
     }
+    if (filterMine) {
+      filtered = filtered.filter(isAssignedToMe);
+    }
+    if (filterSearch.trim()) {
+      filtered = filtered.filter(p => matchesSearch(p, filterSearch.trim()));
+    }
 
     return filtered;
-  }, [activeProjects, filterStatus, filterRegion, filterBranch, filterClientSpecialist, filterEnhSpecialist, filterFieldSupervisor]);
+  }, [activeProjects, filterStatus, filterRegion, filterBranch, filterClientSpecialist, filterEnhSpecialist, filterFieldSupervisor, filterMine, filterSearch, isAssignedToMe]);
+
+  const hasActiveFilters =
+    filterStatus !== 'all' ||
+    filterRegion !== 'all' ||
+    filterBranch !== 'all' ||
+    filterClientSpecialist !== 'all' ||
+    filterEnhSpecialist !== 'all' ||
+    filterFieldSupervisor !== 'all' ||
+    filterMine ||
+    filterSearch.trim() !== '';
+
+  const clearAllFilters = () => {
+    setFilterStatus('all');
+    setFilterRegion('all');
+    setFilterBranch('all');
+    setFilterClientSpecialist('all');
+    setFilterEnhSpecialist('all');
+    setFilterFieldSupervisor('all');
+    setFilterMine(false);
+    setFilterSearch('');
+  };
 
   // Redirect to sign-in if not authenticated - AFTER all hooks are declared
   useEffect(() => {
@@ -326,24 +417,34 @@ export default function DashboardPage() {
           filterClientSpecialist={filterClientSpecialist}
           filterEnhSpecialist={filterEnhSpecialist}
           filterFieldSupervisor={filterFieldSupervisor}
+          filterSearch={filterSearch}
+          filterMine={filterMine}
           onFilterStatusChange={setFilterStatus}
           onFilterRegionChange={setFilterRegion}
           onFilterBranchChange={setFilterBranch}
           onFilterClientSpecialistChange={setFilterClientSpecialist}
           onFilterEnhSpecialistChange={setFilterEnhSpecialist}
           onFilterFieldSupervisorChange={setFilterFieldSupervisor}
+          onFilterSearchChange={setFilterSearch}
+          onFilterMineChange={setFilterMine}
           regions={filterOptions.regions}
           branches={filterOptions.branches}
           clientSpecialists={filterOptions.clientSpecialists}
           enhSpecialists={filterOptions.enhSpecialists}
           fieldSupervisors={filterOptions.fieldSupervisors}
+          totalCount={activeProjects.length}
+          filteredCount={tableFilteredProjects.length}
+          hasActiveFilters={hasActiveFilters}
+          onClearFilters={clearAllFilters}
+          canFilterMine={!!sessionUserName}
         />
 
         {/* Project Table - Uses ALL filters including status */}
-        <ProjectTable 
+        <ProjectTable
           projects={tableFilteredProjects}
           onViewDetails={setSelectedProject}
           onUpdateProject={updateProject}
+          isAssignedToMe={isAssignedToMe}
         />
 
         {tableFilteredProjects.length === 0 && (
@@ -371,5 +472,19 @@ export default function DashboardPage() {
         currentStage={currentStage}
       />
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      }
+    >
+      <DashboardContent />
+    </Suspense>
   );
 }

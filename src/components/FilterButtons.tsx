@@ -1,4 +1,5 @@
 import { statusConfig } from '@/lib/statusConfig';
+import { Search, X, User } from 'lucide-react';
 
 interface FilterButtonsProps {
   filterStatus: string;
@@ -7,17 +8,26 @@ interface FilterButtonsProps {
   filterClientSpecialist: string;
   filterEnhSpecialist: string;
   filterFieldSupervisor: string;
+  filterSearch: string;
+  filterMine: boolean;
   onFilterStatusChange: (status: string) => void;
   onFilterRegionChange: (region: string) => void;
   onFilterBranchChange: (branch: string) => void;
   onFilterClientSpecialistChange: (specialist: string) => void;
   onFilterEnhSpecialistChange: (specialist: string) => void;
   onFilterFieldSupervisorChange: (supervisor: string) => void;
+  onFilterSearchChange: (q: string) => void;
+  onFilterMineChange: (mine: boolean) => void;
   regions: string[];
   branches: string[];
   clientSpecialists: string[];
   enhSpecialists: string[];
   fieldSupervisors: string[];
+  totalCount: number;
+  filteredCount: number;
+  hasActiveFilters: boolean;
+  onClearFilters: () => void;
+  canFilterMine: boolean;
 }
 
 export default function FilterButtons({
@@ -27,20 +37,83 @@ export default function FilterButtons({
   filterClientSpecialist,
   filterEnhSpecialist,
   filterFieldSupervisor,
+  filterSearch,
+  filterMine,
   onFilterStatusChange,
   onFilterRegionChange,
   onFilterBranchChange,
   onFilterClientSpecialistChange,
   onFilterEnhSpecialistChange,
   onFilterFieldSupervisorChange,
+  onFilterSearchChange,
+  onFilterMineChange,
   regions = [],
   branches = [],
   clientSpecialists = [],
   enhSpecialists = [],
   fieldSupervisors = [],
+  totalCount,
+  filteredCount,
+  hasActiveFilters,
+  onClearFilters,
+  canFilterMine,
 }: FilterButtonsProps) {
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+      {/* Search + My Projects + Counter + Clear */}
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[240px]">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <input
+            type="text"
+            value={filterSearch}
+            onChange={(e) => onFilterSearchChange(e.target.value)}
+            placeholder="Search by WO#, property, or opportunity..."
+            className="w-full pl-9 pr-9 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
+          />
+          {filterSearch && (
+            <button
+              onClick={() => onFilterSearchChange('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              title="Clear search"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+
+        {canFilterMine && (
+          <button
+            onClick={() => onFilterMineChange(!filterMine)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              filterMine
+                ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
+                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+            }`}
+            title="Show only projects where I'm the Client Specialist, Enh Specialist, or Field Supervisor"
+          >
+            <User size={16} />
+            My projects
+          </button>
+        )}
+
+        <div className="text-sm text-gray-600 ml-auto whitespace-nowrap">
+          Showing <span className="font-semibold text-gray-900">{filteredCount}</span> of{' '}
+          <span className="font-semibold text-gray-900">{totalCount}</span>
+        </div>
+
+        {hasActiveFilters && (
+          <button
+            onClick={onClearFilters}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-300"
+            title="Reset all filters"
+          >
+            <X size={14} />
+            Clear all
+          </button>
+        )}
+      </div>
+
       {/* Stage Filter Buttons */}
       <div className="mb-4">
         <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">

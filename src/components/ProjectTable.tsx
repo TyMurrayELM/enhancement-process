@@ -11,6 +11,7 @@ interface ProjectTableProps {
   projects: Project[];
   onViewDetails: (project: Project) => void;
   onUpdateProject: (project: Project) => void;
+  isAssignedToMe?: (project: Project) => boolean;
 }
 
 type SortColumn = 'scheduledDate' | 'wonDate' | null;
@@ -52,7 +53,7 @@ function calculateDaysAged(wonDate?: string | null): number | null {
   return diffInDays;
 }
 
-export default function ProjectTable({ projects, onViewDetails, onUpdateProject }: ProjectTableProps) {
+export default function ProjectTable({ projects, onViewDetails, onUpdateProject, isAssignedToMe }: ProjectTableProps) {
   const [notesProject, setNotesProject] = useState<Project | null>(null);
   const [materialsDropdownOpen, setMaterialsDropdownOpen] = useState<number | null>(null);
   const [sortColumn, setSortColumn] = useState<SortColumn>('wonDate');
@@ -222,10 +223,12 @@ export default function ProjectTable({ projects, onViewDetails, onUpdateProject 
                   : 'bg-green-100 text-green-700';
               }
 
+              const mine = isAssignedToMe?.(project) ?? false;
+
               return (
-                <tr 
-                  key={project.id} 
-                  className="hover:bg-gray-50 transition-colors"
+                <tr
+                  key={project.id}
+                  className={`transition-colors ${mine ? 'bg-blue-50/60 hover:bg-blue-100/60' : 'hover:bg-gray-50'}`}
                 >
                   {/* WO# Column - Changed to text-xs */}
                   <td className="px-4 py-3 text-xs font-medium text-gray-700">
