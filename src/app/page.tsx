@@ -52,23 +52,25 @@ export default function DashboardPage() {
   const [filterBranch, setFilterBranch] = useState('all');
   const [filterClientSpecialist, setFilterClientSpecialist] = useState('all');
   const [filterEnhSpecialist, setFilterEnhSpecialist] = useState('all');
+  const [filterFieldSupervisor, setFilterFieldSupervisor] = useState('all');
 
   const activeProjects = projects.filter(p => p.status !== 'proposal');
-  
+
   // Extract unique values for filter dropdowns
   const filterOptions = useMemo(() => {
     const regions = [...new Set(activeProjects.map(p => p.regionName).filter(Boolean))].sort() as string[];
     const branches = [...new Set(activeProjects.map(p => p.branchName).filter(Boolean))].sort() as string[];
     const clientSpecialists = [...new Set(activeProjects.map(p => p.accountManager).filter(Boolean))].sort() as string[];
     const enhSpecialists = [...new Set(activeProjects.map(p => p.specialist).filter(Boolean))].sort() as string[];
-    
-    return { regions, branches, clientSpecialists, enhSpecialists };
+    const fieldSupervisors = [...new Set(activeProjects.map(p => p.fieldSupervisor).filter(Boolean))].sort() as string[];
+
+    return { regions, branches, clientSpecialists, enhSpecialists, fieldSupervisors };
   }, [activeProjects]);
 
   // DEMOGRAPHIC FILTERS: Used for Stats Bar - shows ALL stages (including proposal)
   const demographicFilteredProjects = useMemo(() => {
     let filtered = projects;
-    
+
     if (filterRegion !== 'all') {
       filtered = filtered.filter(p => p.regionName === filterRegion);
     }
@@ -81,14 +83,17 @@ export default function DashboardPage() {
     if (filterEnhSpecialist !== 'all') {
       filtered = filtered.filter(p => p.specialist === filterEnhSpecialist);
     }
-    
+    if (filterFieldSupervisor !== 'all') {
+      filtered = filtered.filter(p => p.fieldSupervisor === filterFieldSupervisor);
+    }
+
     return filtered;
-  }, [projects, filterRegion, filterBranch, filterClientSpecialist, filterEnhSpecialist]);
+  }, [projects, filterRegion, filterBranch, filterClientSpecialist, filterEnhSpecialist, filterFieldSupervisor]);
 
   // TABLE FILTERS: Used for Project Table - filters by status AND demographics
   const tableFilteredProjects = useMemo(() => {
     let filtered = activeProjects;
-    
+
     if (filterStatus !== 'all') {
       filtered = filtered.filter(p => p.status === filterStatus);
     }
@@ -104,9 +109,12 @@ export default function DashboardPage() {
     if (filterEnhSpecialist !== 'all') {
       filtered = filtered.filter(p => p.specialist === filterEnhSpecialist);
     }
-    
+    if (filterFieldSupervisor !== 'all') {
+      filtered = filtered.filter(p => p.fieldSupervisor === filterFieldSupervisor);
+    }
+
     return filtered;
-  }, [activeProjects, filterStatus, filterRegion, filterBranch, filterClientSpecialist, filterEnhSpecialist]);
+  }, [activeProjects, filterStatus, filterRegion, filterBranch, filterClientSpecialist, filterEnhSpecialist, filterFieldSupervisor]);
 
   // Redirect to sign-in if not authenticated - AFTER all hooks are declared
   useEffect(() => {
@@ -212,7 +220,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-5">
+        <div className="max-w-[1440px] mx-auto px-6 py-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg flex items-center justify-center">
@@ -288,7 +296,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="max-w-[1440px] mx-auto px-6 py-6">
         {/* Stats - Uses demographic filters only, shows ALL stages */}
         <StatsBar 
           projects={demographicFilteredProjects}
@@ -302,15 +310,18 @@ export default function DashboardPage() {
           filterBranch={filterBranch}
           filterClientSpecialist={filterClientSpecialist}
           filterEnhSpecialist={filterEnhSpecialist}
+          filterFieldSupervisor={filterFieldSupervisor}
           onFilterStatusChange={setFilterStatus}
           onFilterRegionChange={setFilterRegion}
           onFilterBranchChange={setFilterBranch}
           onFilterClientSpecialistChange={setFilterClientSpecialist}
           onFilterEnhSpecialistChange={setFilterEnhSpecialist}
+          onFilterFieldSupervisorChange={setFilterFieldSupervisor}
           regions={filterOptions.regions}
           branches={filterOptions.branches}
           clientSpecialists={filterOptions.clientSpecialists}
           enhSpecialists={filterOptions.enhSpecialists}
+          fieldSupervisors={filterOptions.fieldSupervisors}
         />
 
         {/* Project Table - Uses ALL filters including status */}

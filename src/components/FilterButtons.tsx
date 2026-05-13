@@ -6,15 +6,18 @@ interface FilterButtonsProps {
   filterBranch: string;
   filterClientSpecialist: string;
   filterEnhSpecialist: string;
+  filterFieldSupervisor: string;
   onFilterStatusChange: (status: string) => void;
   onFilterRegionChange: (region: string) => void;
   onFilterBranchChange: (branch: string) => void;
   onFilterClientSpecialistChange: (specialist: string) => void;
   onFilterEnhSpecialistChange: (specialist: string) => void;
+  onFilterFieldSupervisorChange: (supervisor: string) => void;
   regions: string[];
   branches: string[];
   clientSpecialists: string[];
   enhSpecialists: string[];
+  fieldSupervisors: string[];
 }
 
 export default function FilterButtons({
@@ -23,15 +26,18 @@ export default function FilterButtons({
   filterBranch,
   filterClientSpecialist,
   filterEnhSpecialist,
+  filterFieldSupervisor,
   onFilterStatusChange,
   onFilterRegionChange,
   onFilterBranchChange,
   onFilterClientSpecialistChange,
   onFilterEnhSpecialistChange,
+  onFilterFieldSupervisorChange,
   regions = [],
   branches = [],
   clientSpecialists = [],
   enhSpecialists = [],
+  fieldSupervisors = [],
 }: FilterButtonsProps) {
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
@@ -70,7 +76,7 @@ export default function FilterButtons({
       </div>
 
       {/* Dropdown Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Region Filter */}
         <div>
           <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">
@@ -142,6 +148,25 @@ export default function FilterButtons({
             {enhSpecialists.map((specialist) => (
               <option key={specialist} value={specialist}>
                 {specialist}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Field Supervisor Filter */}
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">
+            Field Supervisor
+          </label>
+          <select
+            value={filterFieldSupervisor}
+            onChange={(e) => onFilterFieldSupervisorChange(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-sm"
+          >
+            <option value="all">All Field Supervisors</option>
+            {fieldSupervisors.map((supervisor) => (
+              <option key={supervisor} value={supervisor}>
+                {supervisor}
               </option>
             ))}
           </select>
