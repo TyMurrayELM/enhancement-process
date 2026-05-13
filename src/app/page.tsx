@@ -199,7 +199,8 @@ export default function DashboardPage() {
       clearTimeout(stageTimer2);
       
       setSyncStatus('error');
-      setSyncMessage('Network error: ' + error);
+      const message = error instanceof Error ? error.message : String(error);
+      setSyncMessage(`Network error: ${message}`);
       
       setTimeout(() => {
         setSyncing(false);

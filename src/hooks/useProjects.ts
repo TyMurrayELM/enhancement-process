@@ -187,10 +187,6 @@ export function useProjects() {
 
   async function updateProject(updatedProject: Project) {
     try {
-      console.log('Updating project:', updatedProject.id);
-      console.log('Updated project data:', updatedProject);
-      
-      // Map camelCase back to snake_case for database
       const updateData = {
         stage: updatedProject.status,
         materials_status: updatedProject.materialsStatus,
@@ -226,23 +222,16 @@ export function useProjects() {
         updated_at: new Date().toISOString(),
       };
 
-      console.log('Sending update data to Supabase:', updateData);
-
-      const { data, error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from('projects')
         .update(updateData)
-        .eq('id', updatedProject.id)
-        .select();
+        .eq('id', updatedProject.id);
 
       if (updateError) {
         console.error('Supabase update error:', updateError);
-        console.error('Error details:', JSON.stringify(updateError, null, 2));
         throw new Error(updateError.message || 'Failed to update project');
       }
 
-      console.log('Update successful:', data);
-
-      // Update local state
       setProjects(projects.map(p => p.id === updatedProject.id ? updatedProject : p));
 
     } catch (err) {

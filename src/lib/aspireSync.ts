@@ -319,7 +319,7 @@ export async function syncAspireOpportunities(supabase: SupabaseClient, testLimi
           initial_meeting_scheduled_date: (existing?.initial_meeting_scheduled_date as string) || null,
           before_photo_link: (existing?.before_photo_link as string) || null,
           before_photo_date: (existing?.before_photo_date as string) || null,
-          progress_photo_links: (existing?.progress_photo_links as unknown) || null,
+          progress_photo_links: existing?.progress_photo_links ?? null,
           completion_photo_link: (existing?.completion_photo_link as string) || null,
           completion_photo_date: (existing?.completion_photo_date as string) || null,
           materials_vendors: (existing?.materials_vendors as string) || null,
