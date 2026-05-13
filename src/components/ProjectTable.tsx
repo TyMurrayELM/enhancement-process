@@ -49,8 +49,22 @@ function calculateDaysAged(wonDate?: string | null): number | null {
   // Calculate difference in milliseconds and convert to days
   const diffInMs = arizonaDate.getTime() - wonDateAZ.getTime();
   const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
-  
+
   return diffInDays;
+}
+
+// Color-code the won-date age so stale active projects pop on a scroll-through.
+// Only applied to pre-completion stages; once a project hits complete/follow-up/
+// fully-complete the age is informational, not actionable.
+function getAgeColorClass(daysAged: number, status: Project['status']): string {
+  const isActive =
+    status === 'proposal_verification' ||
+    status === 'won_planning' ||
+    status === 'in_progress';
+  if (!isActive) return 'text-gray-500';
+  if (daysAged > 30) return 'text-red-600 font-semibold';
+  if (daysAged >= 14) return 'text-amber-600 font-medium';
+  return 'text-green-700';
 }
 
 export default function ProjectTable({ projects, onViewDetails, onUpdateProject, isAssignedToMe }: ProjectTableProps) {
@@ -404,7 +418,7 @@ export default function ProjectTable({ projects, onViewDetails, onUpdateProject,
                           const daysAged = calculateDaysAged(project.wonDate);
                           if (daysAged !== null) {
                             return (
-                              <span className="text-xs text-gray-500">
+                              <span className={`text-xs ${getAgeColorClass(daysAged, project.status)}`}>
                                 {daysAged} {daysAged === 1 ? 'day' : 'days'} aged
                               </span>
                             );

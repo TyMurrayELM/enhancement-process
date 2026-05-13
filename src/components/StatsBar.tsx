@@ -4,9 +4,13 @@ import { statusConfig } from '@/lib/statusConfig';
 interface StatsBarProps {
   projects: Project[];
   onStageClick?: (stage: string) => void;
+  activeStage?: string;
 }
 
-export default function StatsBar({ projects, onStageClick }: StatsBarProps) {
+const ACTIVE_RING = 'ring-2 ring-blue-500 ring-offset-1 shadow-md';
+
+export default function StatsBar({ projects, onStageClick, activeStage }: StatsBarProps) {
+  const isActive = (stage: string) => activeStage === stage;
   const stats = {
     total: projects.length,
     proposalVerification: projects.filter(p => p.status === 'proposal_verification').length,
@@ -43,7 +47,7 @@ export default function StatsBar({ projects, onStageClick }: StatsBarProps) {
       {/* Proposal Verification - Clickable */}
       <button
         onClick={() => handleCardClick('proposal_verification')}
-        className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-lg transition-all border-t-4 border-t-blue-400 text-left cursor-pointer hover:scale-105 active:scale-95"
+        className={`bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-lg transition-all border-t-4 border-t-blue-400 text-left cursor-pointer hover:scale-105 active:scale-95 ${isActive('proposal_verification') ? ACTIVE_RING : ''}`}
       >
         <p className="text-xs font-medium text-gray-500 mb-1">{statusConfig.proposal_verification.label}</p>
         <p className="text-2xl font-bold text-blue-600">{stats.proposalVerification}</p>
@@ -53,7 +57,7 @@ export default function StatsBar({ projects, onStageClick }: StatsBarProps) {
       {/* Won-Planning - Clickable */}
       <button
         onClick={() => handleCardClick('won_planning')}
-        className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-lg transition-all border-t-4 border-t-blue-400 text-left cursor-pointer hover:scale-105 active:scale-95"
+        className={`bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-lg transition-all border-t-4 border-t-blue-400 text-left cursor-pointer hover:scale-105 active:scale-95 ${isActive('won_planning') ? ACTIVE_RING : ''}`}
       >
         <p className="text-xs font-medium text-gray-500 mb-1">{statusConfig.won_planning.label}</p>
         <p className="text-2xl font-bold text-purple-600">{stats.planning}</p>
@@ -63,7 +67,7 @@ export default function StatsBar({ projects, onStageClick }: StatsBarProps) {
       {/* In Progress - Clickable */}
       <button
         onClick={() => handleCardClick('in_progress')}
-        className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-lg transition-all border-t-4 border-t-blue-400 text-left cursor-pointer hover:scale-105 active:scale-95"
+        className={`bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-lg transition-all border-t-4 border-t-blue-400 text-left cursor-pointer hover:scale-105 active:scale-95 ${isActive('in_progress') ? ACTIVE_RING : ''}`}
       >
         <p className="text-xs font-medium text-gray-500 mb-1">{statusConfig.in_progress.label}</p>
         <p className="text-2xl font-bold text-yellow-600">{stats.active}</p>
@@ -73,7 +77,7 @@ export default function StatsBar({ projects, onStageClick }: StatsBarProps) {
       {/* Complete - Clickable */}
       <button
         onClick={() => handleCardClick('complete')}
-        className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-lg transition-all border-t-4 border-t-blue-400 text-left cursor-pointer hover:scale-105 active:scale-95"
+        className={`bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-lg transition-all border-t-4 border-t-blue-400 text-left cursor-pointer hover:scale-105 active:scale-95 ${isActive('complete') ? ACTIVE_RING : ''}`}
       >
         <p className="text-xs font-medium text-gray-500 mb-1">{statusConfig.complete.label}</p>
         <p className="text-2xl font-bold text-green-600">{stats.complete}</p>
@@ -83,7 +87,7 @@ export default function StatsBar({ projects, onStageClick }: StatsBarProps) {
       {/* Warranty Period - Clickable */}
       <button
         onClick={() => handleCardClick('follow_up')}
-        className="bg-orange-50 rounded-lg shadow-sm border border-orange-200 p-4 hover:shadow-lg transition-all border-t-4 border-t-orange-400 text-left cursor-pointer hover:scale-105 active:scale-95"
+        className={`bg-orange-50 rounded-lg shadow-sm border border-orange-200 p-4 hover:shadow-lg transition-all border-t-4 border-t-orange-400 text-left cursor-pointer hover:scale-105 active:scale-95 ${isActive('follow_up') ? ACTIVE_RING : ''}`}
       >
         <p className="text-xs font-medium text-gray-500 mb-1">{statusConfig.follow_up.label}</p>
         <p className="text-2xl font-bold text-orange-600">{stats.followUp}</p>
@@ -93,7 +97,7 @@ export default function StatsBar({ projects, onStageClick }: StatsBarProps) {
       {/* Fully Complete - Clickable */}
       <button
         onClick={() => handleCardClick('fully_complete')}
-        className="bg-green-50 rounded-lg shadow-sm border border-green-200 p-4 hover:shadow-lg transition-all border-t-4 border-t-green-400 text-left cursor-pointer hover:scale-105 active:scale-95"
+        className={`bg-green-50 rounded-lg shadow-sm border border-green-200 p-4 hover:shadow-lg transition-all border-t-4 border-t-green-400 text-left cursor-pointer hover:scale-105 active:scale-95 ${isActive('fully_complete') ? ACTIVE_RING : ''}`}
       >
         <p className="text-xs font-medium text-gray-500 mb-1">{statusConfig.fully_complete.label}</p>
         <p className="text-2xl font-bold text-green-600">{stats.fullyComplete}</p>

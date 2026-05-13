@@ -262,9 +262,9 @@ function DashboardContent() {
     });
   };
 
-  // Handle clicking on stage cards to filter
+  // Toggle stage filter — clicking the active card clears the filter.
   const handleStageClick = (stage: string) => {
-    setFilterStatus(stage);
+    setFilterStatus(prev => (prev === stage ? 'all' : stage));
   };
 
   const handleSync = async () => {
@@ -404,9 +404,10 @@ function DashboardContent() {
       {/* Main Content */}
       <div className="max-w-[1440px] mx-auto px-6 py-6">
         {/* Stats - Uses demographic filters only, shows ALL stages */}
-        <StatsBar 
+        <StatsBar
           projects={demographicFilteredProjects}
           onStageClick={handleStageClick}
+          activeStage={filterStatus !== 'all' ? filterStatus : undefined}
         />
 
         {/* Filters */}
