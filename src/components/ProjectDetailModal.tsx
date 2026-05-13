@@ -123,9 +123,9 @@ function createGoogleCalendarUrl(project: Project, meetingDate: string): string 
     defaultAttendees.push('adrian.garcia@encorelm.com');
   } else {
     // Phoenix and all other regions
-    defaultAttendees.push('dennis.bronson@encorelm.com');
+    defaultAttendees.push('david.cedeno@encorelm.com');
   }
-  
+
   const attendees = encodeURIComponent(defaultAttendees.join(','));
   
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDateStr}/${endDateStr}&details=${details}&location=${location}&add=${attendees}`;
@@ -195,7 +195,7 @@ function createWarrantyCalendarUrl(project: Project, visitType: string, daysAfte
     defaultAttendees.push('adrian.garcia@encorelm.com');
   } else {
     // Phoenix and all other regions
-    defaultAttendees.push('dennis.bronson@encorelm.com');
+    defaultAttendees.push('david.cedeno@encorelm.com');
   }
   
   // Add field supervisor if assigned
@@ -203,8 +203,7 @@ function createWarrantyCalendarUrl(project: Project, visitType: string, daysAfte
     // Map field supervisor names to email addresses
     const supervisorEmails: { [key: string]: string } = {
       'Jose Zacarias': 'jose.zacarias@encorelm.com',
-      'Martin Perez': 'martin.perez@encorelm.com',
-      'Ron Pickard': 'ron.pickard@encorelm.com',
+      'James Llewellyn': 'james.llewellyn@encorelm.com',
       'Adrian Garcia': 'adrian.garcia@encorelm.com',
       'Keylon Ross Sr': 'keylon.ross@encorelm.com@encorelm.com',
     };
@@ -273,7 +272,7 @@ export default function ProjectDetailModal({ project, onClose, onUpdateProject }
     if (region.includes('las vegas') || region.includes('vegas')) {
       return ['Adrian Garcia'];
     } else {
-      return ['Martin Perez', 'Keylon Ross Sr'];
+      return ['James Llewellyn', 'Keylon Ross Sr'];
     }
   })();
 
