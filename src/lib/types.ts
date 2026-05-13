@@ -46,9 +46,6 @@ export interface Project {
   currentStageNotesDate?: string;
   requiresIrrigation: boolean;
   requiresSpray: boolean;
-  beforePhotos?: number;
-  progressPhotos?: number;
-  completedPhotos?: number;
   checklistProgress: {
     completed: number;
     total: number;

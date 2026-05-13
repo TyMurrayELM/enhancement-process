@@ -205,7 +205,7 @@ function createWarrantyCalendarUrl(project: Project, visitType: string, daysAfte
       'Jose Zacarias': 'jose.zacarias@encorelm.com',
       'James Llewellyn': 'james.llewellyn@encorelm.com',
       'Adrian Garcia': 'adrian.garcia@encorelm.com',
-      'Keylon Ross Sr': 'keylon.ross@encorelm.com@encorelm.com',
+      'Keylon Ross Sr': 'keylon.ross@encorelm.com',
     };
     const supervisorEmail = supervisorEmails[project.fieldSupervisor];
     if (supervisorEmail && !defaultAttendees.includes(supervisorEmail)) {

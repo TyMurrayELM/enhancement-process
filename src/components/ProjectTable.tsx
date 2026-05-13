@@ -197,7 +197,8 @@ export default function ProjectTable({ projects, onViewDetails, onUpdateProject 
               const materialsStatus = materialsConfig[project.materialsStatus || 'need_to_order'];
               const MaterialsIcon = materialsStatus.icon;
               const progress = project.checklistProgress;
-              const isComplete = progress.completed === progress.total;
+              const isComplete = progress.total > 0 && progress.completed === progress.total;
+              const progressPercent = progress.total > 0 ? (progress.completed / progress.total) * 100 : 0;
               const aspireLink = getAspireLink(project.opportunityId);
               const branchIcon = getBranchIcon(project.branchName);
               const isNew = isWonToday(project.wonDate);
@@ -430,9 +431,7 @@ export default function ProjectTable({ projects, onViewDetails, onUpdateProject 
                             className={`h-2 rounded-full transition-all ${
                               isComplete ? 'bg-blue-600' : 'bg-blue-500'
                             }`}
-                            style={{ 
-                              width: `${(progress.completed / progress.total) * 100}%` 
-                            }}
+                            style={{ width: `${progressPercent}%` }}
                           ></div>
                         </div>
                       </div>

@@ -38,9 +38,6 @@ interface DatabaseProject {
   current_stage_notes_date?: string;
   requires_irrigation?: boolean;
   requires_spray?: boolean;
-  before_photos?: number;
-  progress_photos?: number;
-  completed_photos?: number;
   before_photo_link?: string;
   before_photo_date?: string;
   progress_photo_links?: Array<{ link: string; addedDate: string }>;
@@ -137,9 +134,6 @@ function mapDatabaseToProject(row: DatabaseProject): Project {
     currentStageNotesDate: row.current_stage_notes_date,
     requiresIrrigation: row.requires_irrigation || false,
     requiresSpray: row.requires_spray || false,
-    beforePhotos: row.before_photos,
-    progressPhotos: row.progress_photos,
-    completedPhotos: row.completed_photos,
     checklistProgress,
     beforePhotoLink: row.before_photo_link,
     beforePhotoDate: row.before_photo_date,
@@ -250,10 +244,7 @@ export function useProjects() {
 
       // Update local state
       setProjects(projects.map(p => p.id === updatedProject.id ? updatedProject : p));
-      
-      // Optionally refetch to ensure sync
-      await fetchProjects();
-      
+
     } catch (err) {
       console.error('Failed to update project:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
