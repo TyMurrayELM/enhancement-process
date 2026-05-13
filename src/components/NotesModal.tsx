@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { Project } from '@/lib/types';
 import { statusConfig } from '@/lib/statusConfig';
+import { sendSlackNote } from '@/lib/slack';
+import { formatDate } from '@/lib/format';
 import { Save, X, Edit2, Check } from 'lucide-react';
 import Image from 'next/image';
 
@@ -135,7 +137,6 @@ export default function NotesModal({ project, onClose, onSave }: NotesModalProps
     setIsEditingGeneral(false);
   };
 
-  // Send Current Stage Notes to Slack
   const handleSendSlackStage = async () => {
     if (!currentStageNotes.trim()) {
       alert('Please enter a note before sending to Slack');
@@ -144,59 +145,14 @@ export default function NotesModal({ project, onClose, onSave }: NotesModalProps
 
     setSendingSlackStage(true);
     try {
-      const aspireDirectLink = project.opportunityId 
-        ? `https://cloud.youraspire.com/app/opportunities/details/${project.opportunityId}`
-        : null;
-
-      // Map branch name to Slack emoji
-      const getBranchEmoji = (branchName?: string): string | null => {
-        if (!branchName) return null;
-        const normalized = branchName.toLowerCase();
-        
-        if (normalized.includes('las vegas')) return ':fab_lv:';
-        if (normalized.includes('southwest') || normalized.includes('south west')) return ':sw:';
-        if (normalized.includes('southeast') || normalized.includes('south east')) return ':se:';
-        if (normalized.includes('north')) return ':n:';
-        if (normalized.includes('corporate') || normalized.includes('corp')) return ':corp:';
-        
-        return null;
-      };
-
-      const status = statusConfig[project.status];
-
-      const payload = {
+      await sendSlackNote({
+        project,
         event: 'stage_note_added',
-        stage: status.label,
+        stage: statusConfig[project.status].label,
         stageName: project.status,
         note: currentStageNotes,
-        projectNumber: project.aspireWoNumber || `ID-${project.id}`,
-        opportunityId: project.opportunityId,
-        aspireLink: aspireDirectLink,
-        propertyName: project.clientName,
-        oppName: project.oppName,
-        accountManager: project.accountManager,
-        specialist: project.specialist,
-        fieldSupervisor: project.fieldSupervisor || null,
-        value: project.value,
-        branchName: project.branchName,
-        branchEmoji: getBranchEmoji(project.branchName),
-        regionName: project.regionName,
-        sentBy: session?.user?.name || session?.user?.email || 'Unknown User',
-        sentByEmail: session?.user?.email || null,
-        sentAt: new Date().toISOString(),
-        projectUrl: `${window.location.origin}`
-      };
-
-      const response = await fetch('/api/zapier-webhook', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        session,
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to send notification');
-      }
-
       alert('✅ Slack notification sent!');
     } catch (error) {
       console.error('Slack notification error:', error);
@@ -206,7 +162,6 @@ export default function NotesModal({ project, onClose, onSave }: NotesModalProps
     }
   };
 
-  // Send General Notes to Slack
   const handleSendSlackGeneral = async () => {
     if (!notes.trim()) {
       alert('Please enter a note before sending to Slack');
@@ -215,57 +170,14 @@ export default function NotesModal({ project, onClose, onSave }: NotesModalProps
 
     setSendingSlackGeneral(true);
     try {
-      const aspireDirectLink = project.opportunityId 
-        ? `https://cloud.youraspire.com/app/opportunities/details/${project.opportunityId}`
-        : null;
-
-      // Map branch name to Slack emoji
-      const getBranchEmoji = (branchName?: string): string | null => {
-        if (!branchName) return null;
-        const normalized = branchName.toLowerCase();
-        
-        if (normalized.includes('las vegas')) return ':fab_lv:';
-        if (normalized.includes('southwest') || normalized.includes('south west')) return ':sw:';
-        if (normalized.includes('southeast') || normalized.includes('south east')) return ':se:';
-        if (normalized.includes('north')) return ':n:';
-        if (normalized.includes('corporate') || normalized.includes('corp')) return ':corp:';
-        
-        return null;
-      };
-
-      const payload = {
+      await sendSlackNote({
+        project,
         event: 'general_note_added',
         stage: 'General Project Notes',
         stageName: 'general',
         note: notes,
-        projectNumber: project.aspireWoNumber || `ID-${project.id}`,
-        opportunityId: project.opportunityId,
-        aspireLink: aspireDirectLink,
-        propertyName: project.clientName,
-        oppName: project.oppName,
-        accountManager: project.accountManager,
-        specialist: project.specialist,
-        fieldSupervisor: project.fieldSupervisor || null,
-        value: project.value,
-        branchName: project.branchName,
-        branchEmoji: getBranchEmoji(project.branchName),
-        regionName: project.regionName,
-        sentBy: session?.user?.name || session?.user?.email || 'Unknown User',
-        sentByEmail: session?.user?.email || null,
-        sentAt: new Date().toISOString(),
-        projectUrl: `${window.location.origin}`
-      };
-
-      const response = await fetch('/api/zapier-webhook', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        session,
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to send notification');
-      }
-
       alert('✅ Slack notification sent!');
     } catch (error) {
       console.error('Slack notification error:', error);
@@ -275,7 +187,6 @@ export default function NotesModal({ project, onClose, onSave }: NotesModalProps
     }
   };
 
-  // Send Historical Stage Notes to Slack
   const handleSendSlackHistory = async (index: number) => {
     const stage = stageHistory[index];
     if (!stage || !stage.notes?.trim()) {
@@ -285,59 +196,14 @@ export default function NotesModal({ project, onClose, onSave }: NotesModalProps
 
     setSendingSlackHistory(index);
     try {
-      const aspireDirectLink = project.opportunityId 
-        ? `https://cloud.youraspire.com/app/opportunities/details/${project.opportunityId}`
-        : null;
-
-      // Map branch name to Slack emoji
-      const getBranchEmoji = (branchName?: string): string | null => {
-        if (!branchName) return null;
-        const normalized = branchName.toLowerCase();
-        
-        if (normalized.includes('las vegas')) return ':fab_lv:';
-        if (normalized.includes('southwest') || normalized.includes('south west')) return ':sw:';
-        if (normalized.includes('southeast') || normalized.includes('south east')) return ':se:';
-        if (normalized.includes('north')) return ':n:';
-        if (normalized.includes('corporate') || normalized.includes('corp')) return ':corp:';
-        
-        return null;
-      };
-
-      const stageConfig = statusConfig[stage.stage];
-
-      const payload = {
+      await sendSlackNote({
+        project,
         event: 'stage_note_added',
-        stage: stageConfig.label,
+        stage: statusConfig[stage.stage].label,
         stageName: stage.stage,
         note: stage.notes,
-        projectNumber: project.aspireWoNumber || `ID-${project.id}`,
-        opportunityId: project.opportunityId,
-        aspireLink: aspireDirectLink,
-        propertyName: project.clientName,
-        oppName: project.oppName,
-        accountManager: project.accountManager,
-        specialist: project.specialist,
-        fieldSupervisor: project.fieldSupervisor || null,
-        value: project.value,
-        branchName: project.branchName,
-        branchEmoji: getBranchEmoji(project.branchName),
-        regionName: project.regionName,
-        sentBy: session?.user?.name || session?.user?.email || 'Unknown User',
-        sentByEmail: session?.user?.email || null,
-        sentAt: new Date().toISOString(),
-        projectUrl: `${window.location.origin}`
-      };
-
-      const response = await fetch('/api/zapier-webhook', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        session,
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to send notification');
-      }
-
       alert('✅ Slack notification sent!');
     } catch (error) {
       console.error('Slack notification error:', error);
@@ -345,17 +211,6 @@ export default function NotesModal({ project, onClose, onSave }: NotesModalProps
     } finally {
       setSendingSlackHistory(null);
     }
-  };
-
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   return (

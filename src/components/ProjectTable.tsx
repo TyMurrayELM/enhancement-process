@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Project, getAspireLink, MaterialsStatus } from '@/lib/types';
 import { statusConfig } from '@/lib/statusConfig';
 import { materialsConfig } from '@/lib/materialsConfig';
+import { getBranchIcon } from '@/lib/branchConfig';
 import { CheckCircle, ExternalLink, Play, FileText, Check, ChevronUp, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import NotesModal from './NotesModal';
@@ -14,21 +15,6 @@ interface ProjectTableProps {
 
 type SortColumn = 'scheduledDate' | 'wonDate' | null;
 type SortDirection = 'asc' | 'desc';
-
-// Map branch names to icon filenames
-function getBranchIcon(branchName?: string): string | null {
-  if (!branchName) return null;
-  
-  const normalized = branchName.toLowerCase();
-  
-  if (normalized.includes('las vegas')) return '/icons/branches/fab_lv.png';
-  if (normalized.includes('southwest') || normalized.includes('south west')) return '/icons/branches/phx_sw.png';
-  if (normalized.includes('southeast') || normalized.includes('south east')) return '/icons/branches/phx_se.png';
-  if (normalized.includes('north')) return '/icons/branches/phx_n.png';
-  if (normalized.includes('corporate')) return '/icons/branches/corp.png';
-  
-  return null;
-}
 
 // Check if won date is today in Arizona time
 function isWonToday(wonDate?: string | null): boolean {
@@ -43,9 +29,7 @@ function isWonToday(wonDate?: string | null): boolean {
   const wonDateObj = new Date(wonDate);
   const wonDateAZ = new Date(wonDateObj.toLocaleString('en-US', { timeZone: 'America/Phoenix' }));
   const wonDateOnly = `${wonDateAZ.getFullYear()}-${String(wonDateAZ.getMonth() + 1).padStart(2, '0')}-${String(wonDateAZ.getDate()).padStart(2, '0')}`;
-  
-  console.log('Checking won date:', wonDate, 'Today in AZ:', todayAZ, 'Won date in AZ:', wonDateOnly, 'Match:', todayAZ === wonDateOnly);
-  
+
   return todayAZ === wonDateOnly;
 }
 

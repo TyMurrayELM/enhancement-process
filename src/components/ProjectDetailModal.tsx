@@ -6,6 +6,14 @@ import { Project, ProjectStatus, MaterialsStatus, getAspireLink } from '@/lib/ty
 import { statusConfig } from '@/lib/statusConfig';
 import { materialsConfig } from '@/lib/materialsConfig';
 import { getStageRequirements } from '@/utils/requirements';
+import {
+  createInitialMeetingCalendarUrl,
+  createWarrantyCalendarUrl,
+  getFollowUpDate,
+} from '@/lib/calendar';
+import { getFieldSupervisorsForRegion } from '@/lib/teamConfig';
+import { sendSlackNote } from '@/lib/slack';
+import { formatDate } from '@/lib/format';
 import { ChevronRight, ChevronLeft, Lock, CheckCircle, History, ExternalLink, Save } from 'lucide-react';
 import Image from 'next/image';
 
@@ -23,7 +31,6 @@ interface ChecklistState {
   };
 }
 
-// Helper to get previous stage
 function getPreviousStatus(currentStatus: ProjectStatus): ProjectStatus | null {
   const statusOrder: ProjectStatus[] = [
     'proposal_verification',
@@ -33,203 +40,13 @@ function getPreviousStatus(currentStatus: ProjectStatus): ProjectStatus | null {
     'follow_up',
     'fully_complete'
   ];
-  
+
   const currentIndex = statusOrder.indexOf(currentStatus);
   if (currentIndex <= 0) return null;
   return statusOrder[currentIndex - 1];
 }
 
-// Helper to calculate warranty follow-up dates
-function getFollowUpDate(completedDate: string | undefined, daysToAdd: number): string | null {
-  if (!completedDate) return null;
-  
-  const date = new Date(completedDate);
-  date.setDate(date.getDate() + daysToAdd);
-  
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  });
-}
-
-// Helper to convert name to email format (first.last@encorelm.com)
-function nameToEmail(fullName: string): string {
-  if (!fullName) return '';
-  
-  const nameParts = fullName.trim().toLowerCase().split(' ');
-  if (nameParts.length < 2) return '';
-  
-  // Handle first and last name (ignore middle names/initials)
-  const firstName = nameParts[0];
-  const lastName = nameParts[nameParts.length - 1];
-  
-  return `${firstName}.${lastName}@encorelm.com`;
-}
-
-// Format YYYY-MM-DD + hour into Google Calendar's floating timestamp (interpreted
-// per the URL's ctz param, so no browser-TZ math).
-function formatCalendarDateTime(yyyyMmDd: string, hour: number, minute = 0): string {
-  const pad = (n: number) => n.toString().padStart(2, '0');
-  const [y, m, d] = yyyyMmDd.split('-');
-  return `${y}${m}${d}T${pad(hour)}${pad(minute)}00`;
-}
-
-// Add N days to a YYYY-MM-DD using UTC math so DST never shifts the day.
-function addDaysToDateString(yyyyMmDd: string, days: number): string {
-  const d = new Date(`${yyyyMmDd}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
-// Phoenix doesn't observe DST; Vegas does. Mapping by region keeps the calendar
-// event anchored to the property's local time regardless of the user's browser TZ.
-function getRegionTimezone(regionName?: string): string {
-  const region = regionName?.toLowerCase() || '';
-  if (region.includes('vegas')) return 'America/Los_Angeles';
-  return 'America/Phoenix';
-}
-
 // Helper to create Google Calendar URL for initial meeting
-function createGoogleCalendarUrl(project: Project, meetingDate: string): string {
-  const dateOnly = meetingDate.slice(0, 10);
-  const startDateStr = formatCalendarDateTime(dateOnly, 9);
-  const endDateStr = formatCalendarDateTime(dateOnly, 10);
-  const tz = getRegionTimezone(project.regionName);
-  
-  const titleParts = ['Initial Site Meeting', project.clientName];
-  if (project.oppName) {
-    titleParts.push(project.oppName);
-  }
-  const title = encodeURIComponent(titleParts.join(' - '));
-  const location = encodeURIComponent(project.clientName);
-  
-  // Generate Aspire link
-  const aspireLink = project.opportunityId 
-    ? `https://cloud.youraspire.com/app/opportunities/details/${project.opportunityId}`
-    : 'N/A';
-  
-  const details = encodeURIComponent(
-    `Initial on-site meeting for enhancement project\n\n` +
-    `WO#: ${project.aspireWoNumber || `#${project.id}`}\n` +
-    `Property: ${project.clientName}\n` +
-    `Opportunity: ${project.oppName || 'N/A'}\n` +
-    `Value: ${project.value.toLocaleString()}\n` +
-    `Client Specialist: ${project.accountManager}\n` +
-    `Enhancement Specialist: ${project.specialist}\n\n` +
-    `View in Aspire:\n${aspireLink}\n\n` +
-    `Agenda:\n` +
-    `- Walk property and confirm scope\n` +
-    `- Locate valves and timer stations${project.requiresIrrigation ? '' : ' (if applicable)'}\n` +
-    `- Discuss client expectations and timeline\n` +
-    `- Take before photos\n` +
-    `- Confirm any special requirements`
-  );
-  
-  // Determine default attendees based on region
-  const region = project.regionName?.toLowerCase() || '';
-  const defaultAttendees: string[] = [];
-  
-  if (region.includes('las vegas') || region.includes('vegas')) {
-    defaultAttendees.push('adrian.garcia@encorelm.com');
-  } else {
-    // Phoenix and all other regions
-    defaultAttendees.push('david.cedeno@encorelm.com');
-  }
-
-  const attendees = encodeURIComponent(defaultAttendees.join(','));
-
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDateStr}/${endDateStr}&details=${details}&location=${location}&add=${attendees}&ctz=${encodeURIComponent(tz)}`;
-}
-
-// Helper to create Google Calendar URL for warranty visits
-function createWarrantyCalendarUrl(project: Project, visitType: string, daysAfterCompletion: number): string {
-  if (!project.completedDate) return '';
-
-  const visitDateStr = addDaysToDateString(project.completedDate.slice(0, 10), daysAfterCompletion);
-  const startDateStr = formatCalendarDateTime(visitDateStr, 9);
-  const endDateStr = formatCalendarDateTime(visitDateStr, 10);
-  const tz = getRegionTimezone(project.regionName);
-  
-  const visitLabels: { [key: string]: string } = {
-    weekOne: '1-Week Follow-up',
-    month1: '30-Day Follow-up',
-    month2: '60-Day Follow-up',
-    month3: '90-Day Follow-up'
-  };
-  
-  const titleParts = [visitLabels[visitType], project.clientName];
-  if (project.oppName) {
-    titleParts.push(project.oppName);
-  }
-  const title = encodeURIComponent(titleParts.join(' - '));
-  const location = encodeURIComponent(project.clientName);
-  
-  // Generate Aspire link
-  const aspireLink = project.opportunityId 
-    ? `https://cloud.youraspire.com/app/opportunities/details/${project.opportunityId}`
-    : 'N/A';
-  
-  const details = encodeURIComponent(
-    `${visitLabels[visitType]} inspection for enhancement project\n\n` +
-    `WO#: ${project.aspireWoNumber || `#${project.id}`}\n` +
-    `Property: ${project.clientName}\n` +
-    `Opportunity: ${project.oppName || 'N/A'}\n` +
-    `Value: ${project.value.toLocaleString()}\n` +
-    `Client Specialist: ${project.accountManager}\n` +
-    `Enhancement Specialist: ${project.specialist}\n` +
-    `Field Supervisor: ${project.fieldSupervisor || 'TBD'}\n\n` +
-    `View in Aspire:\n${aspireLink}\n\n` +
-    `Inspection Tasks:\n` +
-    `- Check health and condition of trees & shrubs\n` +
-    `- Verify irrigation system functionality\n` +
-    `- Inspect staking and support systems\n` +
-    `- Document any issues with photos\n` +
-    `- Report findings to Enhancement Manager\n` +
-    `- Notify client of any concerns`
-  );
-  
-  // Determine default attendees based on region
-  const region = project.regionName?.toLowerCase() || '';
-  const defaultAttendees: string[] = [];
-  
-  if (region.includes('las vegas') || region.includes('vegas')) {
-    defaultAttendees.push('adrian.garcia@encorelm.com');
-  } else {
-    // Phoenix and all other regions
-    defaultAttendees.push('david.cedeno@encorelm.com');
-  }
-  
-  // Add field supervisor if assigned
-  if (project.fieldSupervisor) {
-    // Map field supervisor names to email addresses
-    const supervisorEmails: { [key: string]: string } = {
-      'Jose Zacarias': 'jose.zacarias@encorelm.com',
-      'James Llewellyn': 'james.llewellyn@encorelm.com',
-      'Adrian Garcia': 'adrian.garcia@encorelm.com',
-      'Keylon Ross Sr': 'keylon.ross@encorelm.com',
-    };
-    const supervisorEmail = supervisorEmails[project.fieldSupervisor];
-    if (supervisorEmail && !defaultAttendees.includes(supervisorEmail)) {
-      defaultAttendees.push(supervisorEmail);
-    }
-  }
-  
-  // Add Enhancement Specialist for 30, 60, and 90 day follow-ups
-  if (visitType === 'month1' || visitType === 'month2' || visitType === 'month3') {
-    if (project.specialist) {
-      const specialistEmail = nameToEmail(project.specialist);
-      if (specialistEmail && !defaultAttendees.includes(specialistEmail)) {
-        defaultAttendees.push(specialistEmail);
-      }
-    }
-  }
-  
-  const attendees = encodeURIComponent(defaultAttendees.join(','));
-
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDateStr}/${endDateStr}&details=${details}&location=${location}&add=${attendees}&ctz=${encodeURIComponent(tz)}`;
-}
-
 export default function ProjectDetailModal({ project, onClose, onUpdateProject }: ProjectDetailModalProps) {
   const { data: session } = useSession();
   const status = statusConfig[project.status];
@@ -268,15 +85,7 @@ export default function ProjectDetailModal({ project, onClose, onUpdateProject }
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
   const [sendingSlack, setSendingSlack] = useState(false);
 
-  // Determine field supervisors based on region
-  const fieldSupervisors = (() => {
-    const region = project.regionName?.toLowerCase() || '';
-    if (region.includes('las vegas') || region.includes('vegas')) {
-      return ['Adrian Garcia'];
-    } else {
-      return ['James Llewellyn', 'Keylon Ross Sr'];
-    }
-  })();
+  const fieldSupervisors = getFieldSupervisorsForRegion(project.regionName);
 
   const handleBeforePhotoChange = (value: string) => {
     setBeforePhotoLink(value);
@@ -348,11 +157,10 @@ export default function ProjectDetailModal({ project, onClose, onUpdateProject }
       return;
     }
     
-    const calendarUrl = createGoogleCalendarUrl(project, initialMeetingDate);
+    const calendarUrl = createInitialMeetingCalendarUrl(project, initialMeetingDate);
     window.open(calendarUrl, '_blank');
   };
 
-  // Send Slack notification with stage note
   const handleSendSlackNotification = async () => {
     if (!stageNotes.trim()) {
       alert('Please enter a note before sending to Slack');
@@ -361,57 +169,15 @@ export default function ProjectDetailModal({ project, onClose, onUpdateProject }
 
     setSendingSlack(true);
     try {
-      const aspireDirectLink = project.opportunityId 
-        ? `https://cloud.youraspire.com/app/opportunities/details/${project.opportunityId}`
-        : null;
-
-      // Map branch name to Slack emoji
-      const getBranchEmoji = (branchName?: string): string | null => {
-        if (!branchName) return null;
-        const normalized = branchName.toLowerCase();
-        
-        if (normalized.includes('las vegas')) return ':fab_lv:';
-        if (normalized.includes('southwest') || normalized.includes('south west')) return ':sw:';
-        if (normalized.includes('southeast') || normalized.includes('south east')) return ':se:';
-        if (normalized.includes('north')) return ':n:';
-        if (normalized.includes('corporate') || normalized.includes('corp')) return ':corp:';
-        
-        return null;
-      };
-
-      const payload = {
+      await sendSlackNote({
+        project,
         event: 'stage_note_added',
         stage: status.label,
         stageName: project.status,
         note: stageNotes,
-        projectNumber: project.aspireWoNumber || `ID-${project.id}`,
-        opportunityId: project.opportunityId,
-        aspireLink: aspireDirectLink,
-        propertyName: project.clientName,
-        oppName: project.oppName,
-        accountManager: project.accountManager,
-        specialist: project.specialist,
-        fieldSupervisor: fieldSupervisor || null,
-        value: project.value,
-        branchName: project.branchName,
-        branchEmoji: getBranchEmoji(project.branchName),
-        regionName: project.regionName,
-        sentBy: session?.user?.name || session?.user?.email || 'Unknown User',
-        sentByEmail: session?.user?.email || null,
-        sentAt: new Date().toISOString(),
-        projectUrl: `${window.location.origin}`
-      };
-
-      const response = await fetch('/api/zapier-webhook', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        fieldSupervisorOverride: fieldSupervisor || null,
+        session,
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to send notification');
-      }
-
       alert('✅ Slack notification sent!');
     } catch (error) {
       console.error('Slack notification error:', error);
@@ -528,18 +294,6 @@ export default function ProjectDetailModal({ project, onClose, onUpdateProject }
       addProgressLink(newProgressLink);
       setNewProgressLink('');
     }
-  };
-
-  const formatDate = (dateString: string | null | undefined): string => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   const renderHistoryView = () => {
