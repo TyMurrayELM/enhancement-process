@@ -151,7 +151,10 @@ export default function ProjectTable({ projects, onViewDetails, onUpdateProject 
               <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                 Enh Specialist
               </th>
-              <th 
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" title="Field Supervisor">
+                FS
+              </th>
+              <th
                 className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-blue-100 transition-colors select-none"
                 onClick={() => handleSort('scheduledDate')}
                 title="Click to sort"
@@ -369,7 +372,11 @@ export default function ProjectTable({ projects, onViewDetails, onUpdateProject 
                   <td className="px-4 py-3 text-xs text-gray-700">
                     {project.specialist}
                   </td>
-                  
+
+                  <td className="px-4 py-3 text-xs text-gray-700" title={project.fieldSupervisor || 'Unassigned'}>
+                    {project.fieldSupervisor || <span className="text-gray-400">—</span>}
+                  </td>
+
                   <td className="px-4 py-3 text-sm text-gray-700 w-24">
                     {project.scheduledDate ? (
                       new Date(project.scheduledDate).toLocaleDateString('en-US', { 
